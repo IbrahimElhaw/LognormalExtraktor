@@ -77,11 +77,11 @@ if __name__ == '__main__':
     D_1 = 20         # Amplitude range(-10 -> 70)
     std_dev_1 = 0.3  # Standard deviation (sigma) range(0.1 -> 0.45)
     mean_1 = -2      # Mean (meu) range(-2.2 -> -1.6)
-    x_0 = 0         # shifted range(0 -> 1)
+    x_0 = 2         # shifted range(0 -> 1)
 
     # Generate the curve
     seconds = 1
-    x_values = np.linspace(x_0+0.01, seconds, 200*seconds)
+    x_values = np.linspace(x_0+0.01, x_0+seconds, 200*seconds)
     velocity_profile = (D_1 / ((x_values - x_0) * std_dev_1 * np.sqrt(2 * np.pi))) * np.exp(-((np.log(x_values - x_0) - mean_1) ** 2) / (2 * std_dev_1 ** 2))
 
     # sigma, meu, t_0
@@ -89,9 +89,9 @@ if __name__ == '__main__':
     D_agonist = velocity_profile[np.argmax(velocity_profile)] * sigma_agonist * np.sqrt(2 * np.pi) * np.exp(meu_agonist - (sigma_agonist ** 2 / 2))
     print(f"Sigma: {sigma_agonist}, meu {meu_agonist}, D: {D_agonist}, t_0: {t_0}")
 
-    x_values+=t_0
+    #x_values+=t_0
     calulated_velocity_aganostic = (D_agonist / ((x_values - t_0) * sigma_agonist * np.sqrt(2 * np.pi))) * np.exp(-((np.log(x_values - t_0) - meu_agonist) ** 2) / (2 * sigma_agonist ** 2))
-    calculated_vilocity_antagonist = velocity_profile - calulated_velocity_aganostic
+    calculated_vilocity_antagonist = -(velocity_profile - calulated_velocity_aganostic)
     plt.plot(x_values, calulated_velocity_aganostic, color="red")
     plt.plot(x_values, velocity_profile, color="blue")
     plt.plot(x_values, calculated_vilocity_antagonist, color="black")
