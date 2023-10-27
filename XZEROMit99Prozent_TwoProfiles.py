@@ -4,7 +4,6 @@ from scipy.integrate import trapz
 from scipy.optimize import fsolve
 import warnings
 
-
 # this functon solves sigma, meu and t_0
 def get_sigma_und_meu_parameters(x_values, y_values, procent=0.9973):
     t_m = x_values[np.argmax(y_values)]
@@ -84,9 +83,13 @@ def estimate_sigma_antagonist(x_values, calculated_antagonist, t_0):
     return calculated_sigma_antagonist, calculated_meu_antagonist, calculated_D_antagonist
 
 
+def generate_lognormal_curve(D, std_dev, mean, x_0, seconds=1):
+    return (D / ((x_values - x_0) * std_dev * np.sqrt(2 * np.pi))) * np.exp(
+        -((np.log(x_values - x_0) - mean) ** 2) / (2 * std_dev ** 2))
 
 
 if __name__ == '__main__':
+
     # Parameters for the log-normal distribution
     D_1 = 60  # Amplitude range(5 -> 70)
     std_dev_1 = 0.3  # Standard deviation (sigma) range(0.1 -> 0.45)
@@ -97,42 +100,34 @@ if __name__ == '__main__':
     std_dev_2 = 0.1  # Standard deviation (sigma) range(0.1 -> 0.45)
     mean_2 = -1.65  # Mean (meu) range(-2.2 -> -1.6)
 
-    # Generate the curve
     seconds = 1
     x_values = np.linspace(x_0 + 0.01, x_0 + seconds, 200 * seconds)
-    velocity_agonist = (D_1 / ((x_values - x_0) * std_dev_1 * np.sqrt(2 * np.pi))) * np.exp(
-        -((np.log(x_values - x_0) - mean_1) ** 2) / (2 * std_dev_1 ** 2))
-    velocity_antagonist = (D_2 / ((x_values - x_0) * std_dev_2 * np.sqrt(2 * np.pi))) * np.exp(
-        -((np.log(x_values - x_0) - mean_2) ** 2) / (2 * std_dev_2 ** 2))
+
+    # Generate the curve
+    velocity_agonist = generate_lognormal_curve(D_1, std_dev_1, mean_1, x_0)
+    velocity_antagonist = generate_lognormal_curve(D_2, std_dev_2, mean_2, x_0)
     velocity_profile = velocity_agonist - velocity_antagonist
-    plt.plot(x_values, velocity_profile, color="blue")
-    plt.show()
+
     # estimate sigma, meu, t_0
     sigma_agonist, meu_agonist, t_0 = get_sigma_und_meu_parameters(x_values, velocity_profile)
     D_agonist = velocity_profile[np.argmax(velocity_profile)] * sigma_agonist * np.sqrt(2 * np.pi) * np.exp(
         meu_agonist - (sigma_agonist ** 2 / 2))
-    print(f"Sigma: {sigma_agonist}, meu {meu_agonist}, D: {D_agonist}, t_0: {t_0}")
 
     if x_values[0] - t_0 < 0:
         x_values += (t_0 - x_values[0])
-    generated_velocity_aganostic = (D_agonist / ((x_values - t_0) * sigma_agonist * np.sqrt(2 * np.pi))) * np.exp(
-        -((np.log(x_values - t_0) - meu_agonist) ** 2) / (2 * sigma_agonist ** 2))
+    generated_velocity_aganostic = generate_lognormal_curve(D_agonist, sigma_agonist, meu_agonist, t_0)
 
     # velocity = aganostic - antagonist -> antagonist = aganostic - velocity
     calculated_vilocity_antagonist = -(velocity_profile - generated_velocity_aganostic)
 
     sigma_antagonist, meu_antagonist, D_antagonist = estimate_sigma_antagonist(x_values, calculated_vilocity_antagonist, t_0)
-
-    generated_vilocity_antagonist = (D_antagonist / ((x_values - t_0) * sigma_antagonist * np.sqrt(2 * np.pi))) * np.exp(
-        -((np.log(x_values - t_0) - meu_antagonist) ** 2) / (2 * sigma_antagonist ** 2))
+    generated_vilocity_antagonist = generate_lognormal_curve(D_antagonist, sigma_antagonist, meu_antagonist, t_0)
 
     generated_velocity_profile = generated_velocity_aganostic - generated_vilocity_antagonist
-
     calculated_vilocity_antagonist3 = -(velocity_profile - generated_velocity_profile)
+
     sigma_antagonist3, meu_antagonist3, D_antagonist3 = estimate_sigma_antagonist(x_values, calculated_vilocity_antagonist3, t_0)
-    generated_vilocity_antagonist3 = (D_antagonist3 / (
-                (x_values - t_0) * sigma_antagonist3 * np.sqrt(2 * np.pi))) * np.exp(
-        -((np.log(x_values - t_0) - meu_antagonist3) ** 2) / (2 * sigma_antagonist3 ** 2))
+    generated_vilocity_antagonist3 = generate_lognormal_curve(D_antagonist3,sigma_antagonist3, meu_antagonist3, t_0)
 
     generated_velocity_profile = generated_velocity_profile - generated_vilocity_antagonist3
     plt.plot(x_values, velocity_profile, color="blue")
