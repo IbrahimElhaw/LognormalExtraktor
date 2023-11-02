@@ -1,4 +1,8 @@
 # wird noch bearbeitet
 dieses Projekt dient zur Extraktion der Parameter von Sigmalog-normal eines meschlichen Striches. 
+die 2 Dateien von XZERO waren initialle Versuche
 
-der aktuelle Zustand ist in der Datei 2Vprofil. die Anderen Dateien werden benutzt, um leichtes Zwsichenspeicher zu ermöglichen
+sigma_lognormal_curve_parameters.py extraiehrt all Kurvenparameter un rekonstriehrt die Kurve
+XML und read_doc sind Versuche um DB zu lesen (noch nicht geklappt) werden später behandelt.
+
+gerade ist die Arbeit in sigma.py um die angulare Parameter zu behandeln.

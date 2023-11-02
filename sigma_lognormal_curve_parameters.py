@@ -201,13 +201,14 @@ def represent_curve(x_values, y_values):
         if len(local_max_indezies) == 0:
             print("curve's end reached")
             break
+
     generated_curve = np.zeros_like(velocity_profile_copy)
     for vector in parameter_matrix:
         generated_curve += generate_lognormal_curve(vector[0], vector[1], vector[2], vector[3])
-    return generated_curve
+    return generated_curve, parameter_matrix
 
 
-
+# main is used for test
 if __name__ == '__main__':
     # Parameters for the sigma log-normal distribution
     D_1 = 15  # Amplitude range(5 -> 70)
@@ -239,7 +240,7 @@ if __name__ == '__main__':
     velocity4 = generate_lognormal_curve(D_4, std_dev_4, mean_4, x_04)
     velocity_profile = velocity1 + velocity2 + velocity3 + velocity4
 
-    generated_curve = represent_curve(x_values, velocity_profile)
+    generated_curve, _ = represent_curve(x_values, velocity_profile)
 
     plt.plot(x_values, velocity_profile, color="red")
     plt.plot(x_values, generated_curve, color="black")
