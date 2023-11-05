@@ -232,7 +232,7 @@ if __name__ == '__main__':
     x_04 = 0.6  # shifted range(0 -> 1)
 
     seconds = 1.5
-    x_values = np.linspace(x_01 + 0.01, x_01 + seconds, int(200 * seconds))
+    x_values = np.linspace(0.01,  seconds, int(200 * seconds))
     # Generate the curve
     velocity1 = generate_lognormal_curve(D_1, std_dev_1, mean_1, x_01)
     velocity2 = generate_lognormal_curve(D_2, std_dev_2, mean_2, x_02)
@@ -240,9 +240,9 @@ if __name__ == '__main__':
     velocity4 = generate_lognormal_curve(D_4, std_dev_4, mean_4, x_04)
     velocity_profile = velocity1 + velocity2 + velocity3 + velocity4
 
-    generated_curve, _ = represent_curve(x_values, velocity_profile)
+    generated_curve, parameter = represent_curve(x_values, velocity_profile)
 
-    plt.plot(x_values, velocity_profile, color="red")
+    plt.plot(x_values, velocity_profile, color="red", label="real")
     plt.plot(x_values, generated_curve, color="black")
     plt.show()
 
