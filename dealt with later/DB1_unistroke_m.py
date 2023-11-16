@@ -49,20 +49,18 @@ def smooth_curve(velocity):
 
 
 if __name__ == '__main__':
-    x, y, timestamps, velocity = open_file('C:\\Users\\himaa\\Desktop\\Studium\\BP2\\DB\\1 unistrokes\\s02\\fast\\star07.xml')
+    x, y, timestamps, velocity = open_file('C:\\Users\\himaa\\Desktop\\Studium\\BP2\\DB\\1 unistrokes\\s01 (pilot)\\fast\\star01.xml')
     smoothed_y = smooth_curve(velocity)
     first_derivitive = np.gradient(x, smoothed_y)
     second_derivitive = np.gradient(x, first_derivitive)
     inflection_points = timestamps[np.where(np.diff(np.sign(second_derivitive)))[0] + 1]
     print(inflection_points)
 
-
-
     plt.plot(timestamps,velocity, color="black")
     plt.plot(timestamps, smoothed_y,  color="red")
     # plt.plot(timestamps, second_derivitive,  color="blue")
     plt.scatter(inflection_points, smoothed_y[np.where(np.diff(np.sign(second_derivitive)))[0] + 1])
     plt.figure(2)
-    plt.plot(x, y)
+    plt.plot(x, y, marker='o', linestyle='-')
     # plt.ylim(-1,3.5)
     plt.show()

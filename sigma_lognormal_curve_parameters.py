@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-alpha_beta = [(2, 3), (4, 2), (3, 4)]
+alpha_beta = [(2, 3), (3, 4), (4, 2)]
 
 
 def calculate_sigmas(x_values, y_values, local_max_indezies):
@@ -59,7 +59,7 @@ def calculate_t_0(x_values, y_values, sigmas, meus, local_max_indezies):
     a = [np.nan, np.nan]
     a.append((3/2)*sigmas[0]**2+sigmas[0]*np.sqrt(((sigmas[0]**2/4)+1)))
     a.append(sigmas[1]**2)
-    a.append((3/2)*sigmas[0]**2-sigmas[0]*np.sqrt(((sigmas[0]**2/4)+1)))
+    a.append((3/2)*sigmas[2]**2-sigmas[2]*np.sqrt(((sigmas[2]**2/4)+1)))
 
     while len((modified_meus)) != len(a):
         modified_meus.insert(0, np.nan)
@@ -68,7 +68,7 @@ def calculate_t_0(x_values, y_values, sigmas, meus, local_max_indezies):
     second_dervitive = np.gradient(first_derevitive, x_values)
     inflection_points = x_values[np.where(np.diff(np.sign(second_dervitive)))[0] + 1]
 
-    t_3 = x_values[local_max_indezies[0]]  # the biggest summit in the remaining curve
+    t_3 = x_values[local_max_indezies[0]]  # the actual summit in the remaining curve
     t2_inf1, t4_inf2 = (inflection_points[inflection_points < t_3][-1], inflection_points[inflection_points > t_3][0])
     carachterstic_times = [np.nan, np.nan, t2_inf1, t_3, t4_inf2]
     for alpha, beta in alpha_beta:
@@ -82,7 +82,7 @@ def calculate_Ds(x_values, y_values, sigmas, meus, local_max_indezies):
     a = [np.nan, np.nan]
     a.append((3 / 2) * modified_sigmas[0] ** 2 + modified_sigmas[0] * np.sqrt(((modified_sigmas[0] ** 2 / 4) + 1)))
     a.append(modified_sigmas[1] ** 2)
-    a.append((3 / 2) * modified_sigmas[0] ** 2 - modified_sigmas[0] * np.sqrt(((modified_sigmas[0] ** 2 / 4) + 1)))
+    a.append((3 / 2) * modified_sigmas[2] ** 2 - modified_sigmas[2] * np.sqrt(((modified_sigmas[2] ** 2 / 4) + 1)))
 
     while len((modified_sigmas)) != len(a):
         modified_sigmas.insert(0, np.nan)
@@ -177,8 +177,8 @@ def get_bestfit(x_values, y_values, local_max_indezies):
         if MSE < bestMSE:
             bestMSE = MSE
             bestfit = (D, sigma, meu, t_0, MSE)
-            # print(f"color {col}: {MSE}")
-            # plt.plot(x_values, generated_profile, color=col)
+            print(f"color {col}: {MSE}")
+    #     plt.plot(x_values, generated_profile, color=col)
     # plt.show()
     return bestfit
 
@@ -192,16 +192,15 @@ def represent_curve(x_values, y_values):
     for i in range(len(local_max_indezies)):
         bestfit = get_bestfit(x_values, velocity_profile_copy, local_max_indezies)
         parameter_matrix.append(bestfit)
-        generated_curve = generate_lognormal_curve(bestfit[0], bestfit[1], bestfit[2], bestfit[3])
-        plt.plot(x_values, velocity_profile, color="red")
-        plt.plot(x_values, generated_curve, color="black")
-        plt.show()
+        # generated_curve = generate_lognormal_curve(bestfit[0], bestfit[1], bestfit[2], bestfit[3])
+        # plt.plot(x_values, velocity_profile, color="red")
+        # plt.plot(x_values, generated_curve, color="black")
+        # plt.show()
         velocity_profile_copy -= generate_lognormal_curve(bestfit[0], bestfit[1], bestfit[2], bestfit[3])
         local_max_indezies = local_max_indezies[1:]
         if len(local_max_indezies) == 0:
             print("curve's end reached")
             break
-
     generated_curve = np.zeros_like(velocity_profile_copy)
     for vector in parameter_matrix:
         generated_curve += generate_lognormal_curve(vector[0], vector[1], vector[2], vector[3])
@@ -229,7 +228,7 @@ if __name__ == '__main__':
     D_4 = 20  # Amplitude range(5 -> 70)
     std_dev_4 = 0.2  # Standard deviation (sigma) range(0.1 -> 0.45)
     mean_4 = -1.8  # Mean (meu) range(-2.2 -> -1.6)
-    x_04 = 0.6  # shifted range(0 -> 1)
+    x_04 = 0.5  # shifted range(0 -> 1)
 
     seconds = 1.5
     x_values = np.linspace(0.01,  seconds, int(200 * seconds))
@@ -244,5 +243,8 @@ if __name__ == '__main__':
 
     plt.plot(x_values, velocity_profile, color="red", label="real")
     plt.plot(x_values, generated_curve, color="black")
+    plt.figure(2)
+    remaining_curve = generated_curve - velocity_profile
+    plt.plot(x_values, remaining_curve)
     plt.show()
 
