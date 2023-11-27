@@ -1,0 +1,43 @@
+<TouchCollection>
+	<Touch Type="doubletap" TargetX="160" TargetY="1092">
+		<Stroke>
+			<Point X="180" Y="1116" T="0" />
+			<Point X="180" Y="1110" T="73" />
+			<Point X="180" Y="1108" T="94" />
+			<Point X="180" Y="1108" T="109" />
+		</Stroke>
+		<Stroke>
+			<Point X="186" Y="1090" T="321" />
+			<Point X="195" Y="1086" T="378" />
+			<Point X="195" Y="1086" T="405" />
+		</Stroke>
+	</Touch>
+	<Touch Type="doubletap" TargetX="660" TargetY="160">
+		<Stroke>
+			<Point X="675" Y="153" T="0" />
+			<Point X="675" Y="153" T="140" />
+		</Stroke>
+		<Stroke>
+			<Point X="662" Y="210" T="712" />
+			<Point X="656" Y="210" T="764" />
+			<Point X="655" Y="213" T="784" />
+			<Point X="653" Y="213" T="803" />
+			<Point X="652" Y="213" T="822" />
+			<Point X="650" Y="213" T="841" />
+			<Point X="649" Y="213" T="859" />
+			<Point X="647" Y="208" T="878" />
+			<Point X="646" Y="205" T="897" />
+			<Point X="646" Y="205" T="913" />
+		</Stroke>
+	</Touch>
+	<Touch Type="doubletap" TargetX="660" TargetY="1092">
+		<Stroke>
+			<Point X="668" Y="1128" T="0" />
+			<Point X="668" Y="1128" T="72" />
+		</Stroke>
+		<Stroke>
+			<Point X="673" Y="1058" T="416" />
+			<Point X="673" Y="1058" T="490" />
+		</Stroke>
+	</Touch>
+</TouchCollection>

@@ -1,0 +1,71 @@
+<TouchCollection>
+	<Touch Type="doubletap" TargetX="75" TargetY="305">
+		<Stroke>
+			<Point X="65" Y="308" T="0" />
+			<Point X="64" Y="308" T="97" />
+			<Point X="63" Y="308" T="134" />
+			<Point X="63" Y="309" T="176" />
+			<Point X="63" Y="309" T="545" />
+		</Stroke>
+		<Stroke>
+			<Point X="67" Y="312" T="1121" />
+			<Point X="67" Y="312" T="1150" />
+			<Point X="67" Y="312" T="1252" />
+			<Point X="69" Y="312" T="1429" />
+			<Point X="69" Y="312" T="1445" />
+		</Stroke>
+	</Touch>
+	<Touch Type="doubletap" TargetX="75" TargetY="75">
+		<Stroke>
+			<Point X="63" Y="73" T="0" />
+			<Point X="63" Y="73" T="176" />
+		</Stroke>
+		<Stroke>
+			<Point X="85" Y="91" T="628" />
+			<Point X="85" Y="91" T="724" />
+		</Stroke>
+	</Touch>
+	<Touch Type="doubletap" TargetX="245" TargetY="305">
+		<Stroke>
+			<Point X="272" Y="323" T="0" />
+			<Point X="271" Y="323" T="17" />
+			<Point X="270" Y="323" T="37" />
+			<Point X="269" Y="324" T="58" />
+			<Point X="268" Y="324" T="78" />
+			<Point X="267" Y="324" T="103" />
+			<Point X="267" Y="324" T="198" />
+		</Stroke>
+		<Stroke>
+			<Point X="255" Y="303" T="470" />
+			<Point X="255" Y="303" T="587" />
+		</Stroke>
+	</Touch>
+	<Touch Type="doubletap" TargetX="75" TargetY="75">
+		<Stroke>
+			<Point X="67" Y="97" T="0" />
+			<Point X="70" Y="97" T="17" />
+			<Point X="70" Y="97" T="116" />
+		</Stroke>
+		<Stroke>
+			<Point X="48" Y="82" T="344" />
+			<Point X="48" Y="82" T="440" />
+		</Stroke>
+	</Touch>
+	<Touch Type="doubletap" TargetX="245" TargetY="305">
+		<Stroke>
+			<Point X="290" Y="308" T="0" />
+			<Point X="289" Y="309" T="79" />
+			<Point X="288" Y="310" T="98" />
+			<Point X="287" Y="311" T="120" />
+			<Point X="286" Y="312" T="138" />
+			<Point X="285" Y="313" T="158" />
+			<Point X="284" Y="313" T="180" />
+			<Point X="283" Y="313" T="222" />
+			<Point X="283" Y="313" T="279" />
+		</Stroke>
+		<Stroke>
+			<Point X="266" Y="323" T="622" />
+			<Point X="266" Y="323" T="837" />
+		</Stroke>
+	</Touch>
+</TouchCollection>
