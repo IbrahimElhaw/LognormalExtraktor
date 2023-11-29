@@ -26,17 +26,18 @@ def open_file_unistroke(directory: str):
     y = [int(line.split()[1]) for line in lines[1:]]
     timestamps = [int(line.split()[2]) for line in lines[1:]]'''
 
-    x = []
-    y = []
-    timestamps = []
-
     # XML-Datei öffnen und parsen
     tree = ET.parse(directory)
     root = tree.getroot()
-    x = [int(point.get('X')) for point in root.findall('.//Point')]
-    y = [int(point.get('Y')) for point in root.findall('.//Point')]
-    timestamps = [int(point.get('T')) for point in root.findall('.//Point')]
-
+    x = np.array([int(point.get('X')) for point in root.findall('.//Point')], dtype=np.float64)
+    y = np.array([int(point.get('Y')) for point in root.findall('.//Point')], dtype=np.float64)
+    timestamps = np.array([int(point.get('T')) for point in root.findall('.//Point')], dtype=np.float64)
+    if timestamps[0]>3:
+        timestamps -= timestamps[0]
+        timestamps /=1000
+        print("done")
+    x -= np.min(x)
+    y -= np.min(y)
     return np.array(x), np.array(y), np.array(timestamps)
 
 
@@ -92,7 +93,7 @@ def smooth_curve_2(velocity_data, window_size=20, poly_order=5):
     return smoothed_velocity
 
 
-def extra_smooth(velocity):
-    smoothed_velocity1 = smooth_curve_2(velocity, 50, 5)
-    smoothed_velocity2 = smooth_curve_2(smoothed_velocity1, 50, 5)
+def extra_smooth(velocity, window_size, poly):
+    smoothed_velocity1 = smooth_curve_2(velocity, window_size, poly)
+    smoothed_velocity2 = smooth_curve_2(smoothed_velocity1, window_size, poly)
     return smoothed_velocity2

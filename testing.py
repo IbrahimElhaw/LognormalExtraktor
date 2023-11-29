@@ -2,7 +2,10 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+import openfiles
 import utilities
+from angles import draw_stroke
 from openfiles import calculate_velocity, open_file_children, extra_smooth
 from ranged_infelction_points import represent_curve, generate_curve_from_parameters
 
@@ -14,10 +17,19 @@ def calculate_snr_dB(y):
     return snr_dB
 
 
-def angle(index, x, y):
-    angle_rad = np.arctan2(y, x)
-    return angle_rad[index]
+def angle(index, x, y, num_points=1):
+    start_index = index
+    end_index = min(index + num_points + 1, len(x)-1)
+    dy = y[end_index] - y[start_index]
+    dx = x[end_index] - x[start_index]
+    angle_rad = np.arctan(dy/dx)
 
+    # plt.plot(x_values, y_values, color="green")
+    # plt.plot(x_values[start_index: end_index], y_values[start_index: end_index], color="orange")
+    # plt.show()
+
+    print(np.degrees(angle_rad))
+    return angle_rad
 
 def traveled_distance(D_par, sigma_par, i):
     if i == 1:
@@ -38,15 +50,18 @@ def traveled_distance_2(t, t_0, D_par, sigma_par, meu_par):
 
 
 def find_characteristic_points(x, y):
+    t_3 = x[np.argmax(y)]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         first_derivitive = np.gradient(x, y)
         second_derivitive = np.gradient(x, first_derivitive)
     inflection_points_x = x[np.where(np.diff(np.sign(second_derivitive)))[0] + 1]
     x_coordinate_max_value = x[np.argmax(y)]
-    t_2, t_4 = (inflection_points_x[inflection_points_x < x_coordinate_max_value][-1],
-                inflection_points_x[inflection_points_x > x_coordinate_max_value][0])
-    t_3 = x[np.argmax(y)]
+    try:
+        t_2, t_4 = (inflection_points_x[inflection_points_x < x_coordinate_max_value][-1],
+                    inflection_points_x[inflection_points_x > x_coordinate_max_value][0])
+    except IndexError:
+        raise "small time, problem in data, no inlection points"
     try:
         t_1 = x[(y <= 0.01 * y[x == t_3]) & (x < t_3)][-1]
     except IndexError:
@@ -61,10 +76,10 @@ def find_characteristic_points(x, y):
 
 def delt_angle(characteristic_times, x_values_par, y_values_par, D_par, sigma_par):
     characteristic_times = np.insert(characteristic_times, 0, -1000)
-    term1_1 = angle(characteristic_times[4], x_values_par, y_values_par)
-    term1_2 = angle(characteristic_times[2], x_values_par, y_values_par)
-    term2_1 = traveled_distance(D_par, sigma_par, 4)
-    term2_2 = traveled_distance(D_par, sigma_par, 2)
+    term1_1 = angle(characteristic_times[2], x_values_par, y_values_par)
+    term1_2 = angle(characteristic_times[4], x_values_par, y_values_par)
+    term2_1 = traveled_distance(D_par, sigma_par, 2)
+    term2_2 = traveled_distance(D_par, sigma_par, 4)
     return (term1_1 - term1_2) / (term2_1 - term2_2)
 
 
@@ -78,12 +93,15 @@ def estimate_angles(delta_phi_par, characteristic_points, x, y, D_par, sigma_par
 
 
 if __name__ == '__main__':
-    x_values, y_values, timestamps_arr = open_file_children(
-        'DB\\3\\Dataset\\tablet\\51\\singletouch-draganddrop.xml', 0)
-
+    # x_values, y_values, timestamps_arr = open_file_children(
+    #     'DB\\3\\Dataset\\tablet\\4\\singletouch-draganddrop.xml', 3)
+    x_values, y_values, timestamps_arr = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\check02.xml")
+    plt.plot(x_values, y_values, marker="o")
     velocity = calculate_velocity(x_values, y_values, timestamps_arr)
-    print(calculate_snr_dB(velocity))
-    smoothed_velocity = extra_smooth(velocity)
+    smoothed_velocity = extra_smooth(velocity, int(0.3*len(velocity)), 2)
+    plt.figure(5)
+    plt.plot(timestamps_arr, smoothed_velocity)
+    plt.show()
     strokes = represent_curve(timestamps_arr, smoothed_velocity.copy())
     regenerated_curve = generate_curve_from_parameters(strokes, timestamps_arr)
     plt.plot(timestamps_arr, velocity, label="original", color="cyan")
@@ -92,29 +110,51 @@ if __name__ == '__main__':
     print(utilities.calculate_MSE(regenerated_curve, smoothed_velocity))
     plt.legend()
     plt.figure(2)
-    plt.plot(x_values, y_values)
+    plt.plot(x_values, y_values, marker="o")
     plt.show()
 
-    stroke_order = 0
-    D = strokes[stroke_order][0]
-    sigma = strokes[stroke_order][1]
-    meu = strokes[stroke_order][2]
-    x_0 = strokes[stroke_order][3]
-    # D = 23
-    # sigma = 0.5
-    # meu = -1.6
-    # x_0 = 0.5
-    print("D: ", D)
-    print("sigma: ", sigma)
-    print("meu: ", meu)
-    print("x_0: ", x_0)
-
+    angles = []
     time = np.linspace(timestamps_arr[0], timestamps_arr[-1], len(timestamps_arr))
-    angular_curve = utilities.generate_lognormal_curve(D, sigma, meu, x_0, time[0], time[-1], len(time))
-    characteristic_points_x = find_characteristic_points(time, angular_curve)
-    plt.plot(time, angular_curve)
-    plt.scatter(time[characteristic_points_x], angular_curve[characteristic_points_x])
-    plt.show()
-    delta_phi = delt_angle(characteristic_points_x, x_values, y_values, D, sigma)
-    theta_s, theta_e = estimate_angles(delta_phi, characteristic_points_x, x_values, y_values, D, sigma)
-    print(np.degrees(theta_s), np.degrees(theta_e))
+    X = np.zeros_like(time)
+    Y = np.zeros_like(time)
+
+    for stroke_order in range(len(strokes)):
+        D = strokes[stroke_order][0]
+        sigma = strokes[stroke_order][1]
+        meu = strokes[stroke_order][2]
+        x_0 = strokes[stroke_order][3]
+
+        print("D: ", D)
+        print("sigma: ", sigma)
+        print("meu: ", meu)
+        print("x_0: ", x_0)
+
+        angular_curve = utilities.generate_lognormal_curve(D, sigma, meu, x_0, time[0], time[-1], len(time))
+        characteristic_points_x = find_characteristic_points(time, angular_curve)
+        # plt.plot(time, angular_curve)
+        # plt.scatter(time[characteristic_points_x], angular_curve[characteristic_points_x])
+        # plt.show()
+        delta_phi = delt_angle(characteristic_points_x, x_values, y_values, D, sigma)
+        theta_s, theta_e = estimate_angles(delta_phi, characteristic_points_x, x_values, y_values, D, sigma)
+        angles.append((theta_s, theta_e))
+
+    for stroke, angele in zip(strokes, angles):
+        D = stroke[0]
+        sigma = stroke[1]
+        meu = stroke[2]
+        x_0 = stroke[3]
+        theta_s = angele[0]
+        theta_e = angele[1]
+        new_X, new_Y = draw_stroke(D, theta_s, theta_e , time, x_0, meu, sigma)
+        if theta_s<0:
+            theta_s+=np.pi
+        if theta_e < 0:
+            theta_e += np.pi
+        print(f"D: {D}\t sigma: {sigma}\t meu: {meu}\t X_0:{x_0}\t theta_s: {np.degrees(theta_s)}\t theta_e: {np.degrees(theta_e)}")
+        plt.plot(x_values, y_values)
+        X[~np.isnan(new_X)] += new_X[~np.isnan(new_X)]
+        Y[~np.isnan(new_Y)] += new_Y[~np.isnan(new_Y)]
+        X -= np.min(X)
+        Y -= np.min(Y)
+        plt.plot(X, Y)
+        plt.show()
