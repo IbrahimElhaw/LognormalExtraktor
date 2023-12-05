@@ -1,15 +1,17 @@
-import warnings
+# this file is the main file. The functions in this file aim to estimate the start and end angles, the main method
+# is used to test the actual advance in the implementing. The file uses all other files.
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import openfiles
 import utilities
-from angles import draw_stroke
+from draw_profile import draw_stroke
 from openfiles import calculate_velocity, open_file_children, extra_smooth
 from ranged_infelction_points import represent_curve, generate_curve_from_parameters
 
 
+# not used yet.
 def calculate_snr_dB(y):
     signal_power = np.mean(y) ** 2
     noise_power = np.var(y)
@@ -17,6 +19,9 @@ def calculate_snr_dB(y):
     return snr_dB
 
 
+# gets tha angle of at given index from the graph x and y, num_points is the number of points
+# from which the average is used to get the angle. this is because some noise can effect the
+# angle significantly
 def angle(index, x, y, num_points=1):
     start_index = index
     end_index = min(index + num_points + 1, len(x)-1)
@@ -31,6 +36,10 @@ def angle(index, x, y, num_points=1):
     print(np.degrees(angle_rad))
     return angle_rad
 
+
+# the distance travelled at some characteristic points
+# ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
+# section 3, function (34), refered as l(t_i)
 def traveled_distance(D_par, sigma_par, i):
     if i == 1:
         return 0
@@ -45,46 +54,56 @@ def traveled_distance(D_par, sigma_par, i):
     return None
 
 
-def traveled_distance_2(t, t_0, D_par, sigma_par, meu_par):
-    return (D_par / 2) * (1 + np.math.erf((np.log(t - t_0) - meu_par) / (sigma_par * (2 ** 0.5))))
+# TODO: try it instead of traveled_distance
+# the distance travelled at some characteristic points
+# ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
+# section 3, function (33), refered as l(t-t_0, D, meu, sigma), not in use yet
+def traveled_distance_2(t, D, sigma, mu, t0):
+    t = t - t0
+    t[t<=0] = 0
+    dist = D / 2. * (1 + np.math.erf((np.log(t) - mu) / sigma * 0.707107))
+    return dist
 
 
+# returns the 5 characteristic_points of lognormal profile in following order:
+# begin, first inflection point, maxima, second inflection point, end
+# as defined in
+# https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
 def find_characteristic_points(x, y):
-    t_3 = x[np.argmax(y)]
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        first_derivitive = np.gradient(x, y)
-        second_derivitive = np.gradient(x, first_derivitive)
-    inflection_points_x = x[np.where(np.diff(np.sign(second_derivitive)))[0] + 1]
-    x_coordinate_max_value = x[np.argmax(y)]
-    try:
-        t_2, t_4 = (inflection_points_x[inflection_points_x < x_coordinate_max_value][-1],
-                    inflection_points_x[inflection_points_x > x_coordinate_max_value][0])
-    except IndexError:
-        raise "small time, problem in data, no inlection points"
-    try:
-        t_1 = x[(y <= 0.01 * y[x == t_3]) & (x < t_3)][-1]
-    except IndexError:
-        t_1 = x[0]
-    try:
-        t_5 = x[(y <= 0.01 * y[x == t_3]) & (x > t_3)][0]
-    except IndexError:
-        t_5 = x[-1]
+    t_3 = np.argmax(y)
+    t_2, t_4 = utilities.inflection_points(x, y)
+    t_1, t_5 = utilities.edge_points(x, y)
     characteristic_x = np.array([t_1, t_2, t_3, t_4, t_5])
-    return np.where(np.isin(x, characteristic_x))[0]
+    return characteristic_x
 
 
+# returns the change in angle as defined in
+# ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
+# section 3, function (45)
 def delt_angle(characteristic_times, x_values_par, y_values_par, D_par, sigma_par):
+    plt.plot(x_values_par, y_values_par, marker="o", zorder=1, label="actual drawing")
+    plt.scatter(x_values_par[characteristic_times],y_values_par[characteristic_times], color="red", zorder=2,
+                label="the points in the\n drawing which correspond the \ncharacteristic points in lognormal profile")
+    plt.title("characteristic points in actual drawing")
+    plt.xlabel("x-co")
+    plt.ylabel("y-co")
+    plt.legend()
+    plt.show()
     characteristic_times = np.insert(characteristic_times, 0, -1000)
     term1_1 = angle(characteristic_times[2], x_values_par, y_values_par)
+    a = np.degrees(term1_1)
     term1_2 = angle(characteristic_times[4], x_values_par, y_values_par)
+    b = np.degrees(term1_2)
     term2_1 = traveled_distance(D_par, sigma_par, 2)
     term2_2 = traveled_distance(D_par, sigma_par, 4)
     return (term1_1 - term1_2) / (term2_1 - term2_2)
 
 
-def estimate_angles(delta_phi_par, characteristic_points, x, y, D_par, sigma_par):
-    term1 = angle(characteristic_points[2], x, y)
+# returns start and end angle as defined in
+# ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
+# section 3, functions (36a) and (36b)
+def estimate_angles(delta_phi_par, characteristic_points_par, x, y, D_par, sigma_par):
+    term1 = angle(characteristic_points_par[2], x, y)
     term2 = traveled_distance(D, sigma_par, 3) - traveled_distance(D_par, sigma_par, 1)
     theta_start = term1 - delta_phi_par * term2
     term2 = traveled_distance(D, sigma_par, 5) - traveled_distance(D_par, sigma_par, 3)
@@ -95,23 +114,25 @@ def estimate_angles(delta_phi_par, characteristic_points, x, y, D_par, sigma_par
 if __name__ == '__main__':
     # x_values, y_values, timestamps_arr = open_file_children(
     #     'DB\\3\\Dataset\\tablet\\4\\singletouch-draganddrop.xml', 3)
-    x_values, y_values, timestamps_arr = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\check02.xml")
-    plt.plot(x_values, y_values, marker="o")
-    velocity = calculate_velocity(x_values, y_values, timestamps_arr)
-    smoothed_velocity = extra_smooth(velocity, int(0.3*len(velocity)), 2)
+    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\right_sq_bracket05.xml")
     plt.figure(5)
-    plt.plot(timestamps_arr, smoothed_velocity)
+    plt.plot(timestamps_arr, smoothed_velocity, label="velocity")
+    plt.plot(timestamps_arr, velocity, label="veolcity before smoothing")
+    plt.title("smoothed velocity")
+    plt.xlabel("time")
+    plt.ylabel("velocity")
+    plt.legend()
     plt.show()
     strokes = represent_curve(timestamps_arr, smoothed_velocity.copy())
     regenerated_curve = generate_curve_from_parameters(strokes, timestamps_arr)
     plt.plot(timestamps_arr, velocity, label="original", color="cyan")
     plt.plot(timestamps_arr, regenerated_curve, label="regenerated")
     plt.plot(timestamps_arr, smoothed_velocity, label="smoothed", color="purple")
-    print(utilities.calculate_MSE(regenerated_curve, smoothed_velocity))
     plt.legend()
     plt.figure(2)
     plt.plot(x_values, y_values, marker="o")
     plt.show()
+    print(utilities.calculate_MSE(regenerated_curve, smoothed_velocity))
 
     angles = []
     time = np.linspace(timestamps_arr[0], timestamps_arr[-1], len(timestamps_arr))
@@ -131,14 +152,19 @@ if __name__ == '__main__':
 
         angular_curve = utilities.generate_lognormal_curve(D, sigma, meu, x_0, time[0], time[-1], len(time))
         characteristic_points_x = find_characteristic_points(time, angular_curve)
-        # plt.plot(time, angular_curve)
-        # plt.scatter(time[characteristic_points_x], angular_curve[characteristic_points_x])
-        # plt.show()
+        plt.plot(time, angular_curve)
+        plt.scatter(time[characteristic_points_x], angular_curve[characteristic_points_x], label="characteristic points")
+        plt.title("characteristic points of actual curve")
+        plt.xlabel("time")
+        plt.ylabel("velocity")
+        plt.legend()
+        plt.show()
         delta_phi = delt_angle(characteristic_points_x, x_values, y_values, D, sigma)
         theta_s, theta_e = estimate_angles(delta_phi, characteristic_points_x, x_values, y_values, D, sigma)
         angles.append((theta_s, theta_e))
 
     for stroke, angele in zip(strokes, angles):
+
         D = stroke[0]
         sigma = stroke[1]
         meu = stroke[2]
@@ -146,15 +172,13 @@ if __name__ == '__main__':
         theta_s = angele[0]
         theta_e = angele[1]
         new_X, new_Y = draw_stroke(D, theta_s, theta_e , time, x_0, meu, sigma)
-        if theta_s<0:
-            theta_s+=np.pi
-        if theta_e < 0:
-            theta_e += np.pi
         print(f"D: {D}\t sigma: {sigma}\t meu: {meu}\t X_0:{x_0}\t theta_s: {np.degrees(theta_s)}\t theta_e: {np.degrees(theta_e)}")
-        plt.plot(x_values, y_values)
+        plt.plot(x_values, y_values, label="real drawing")
         X[~np.isnan(new_X)] += new_X[~np.isnan(new_X)]
         Y[~np.isnan(new_Y)] += new_Y[~np.isnan(new_Y)]
-        X -= np.min(X)
-        Y -= np.min(Y)
-        plt.plot(X, Y)
+        plt.plot(X, Y, label="generated drawing")
+        plt.title("real drawing vs generated")
+        plt.xlabel("x-co")
+        plt.ylabel("y-co")
+        plt.legend()
         plt.show()

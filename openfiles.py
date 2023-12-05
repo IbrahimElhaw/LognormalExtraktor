@@ -1,9 +1,16 @@
+# this file is used to read the datasets and preprocess the signal before it is forwarded to the algorithm.
+
 import xml.etree.ElementTree as ET
 
 import numpy as np
+from scipy.interpolate import interp1d
 from scipy.signal import savgol_filter
 
+global_number = 300  # this number is used to interpolate the graph. it represents the number pf points, the graph
+# should have. when the graph is only 50 points, 250 point will be added to fine the graph
 
+
+# reads a row from the dataset of signatures. it is saved local not in git.
 def open_file_signature(directory: str):
     x_coords = []
     y_coords = []
@@ -19,28 +26,28 @@ def open_file_signature(directory: str):
     return np.array(x_coords), np.array(y_coords), np.array(timestamps)
 
 
-def open_file_unistroke(directory: str):
-    '''txt_file = open(directory, 'r')
-    lines = txt_file.readlines()
-    x = [int(line.split()[0]) for line in lines[1:]]
-    y = [int(line.split()[1]) for line in lines[1:]]
-    timestamps = [int(line.split()[2]) for line in lines[1:]]'''
+# reads a row from the dataset of unistrokes. it is saved in git. then the graph
+# is normalized and interpolated.
 
-    # XML-Datei öffnen und parsen
+def open_file_unistroke(directory: str):
     tree = ET.parse(directory)
     root = tree.getroot()
     x = np.array([int(point.get('X')) for point in root.findall('.//Point')], dtype=np.float64)
     y = np.array([int(point.get('Y')) for point in root.findall('.//Point')], dtype=np.float64)
     timestamps = np.array([int(point.get('T')) for point in root.findall('.//Point')], dtype=np.float64)
-    if timestamps[0]>3:
-        timestamps -= timestamps[0]
-        timestamps /=1000
-        print("done")
-    x -= np.min(x)
-    y -= np.min(y)
-    return np.array(x), np.array(y), np.array(timestamps)
+    smoothed_velocity, velocity = calculate_velocity(x, y, timestamps)
+    x, y = normalize(x, y)
+    x = interpolate(x, n_points=global_number)
+    y = interpolate(y, n_points=global_number)
+    timestamps = interpolate(timestamps, n_points=global_number)
+    timestamps-=np.min(timestamps)
+    smoothed_velocity = interpolate(smoothed_velocity, n_points=global_number)
+    velocity = interpolate(velocity, n_points=global_number)
+    return np.array(x), np.array(y), np.array(timestamps), np.array(smoothed_velocity), np.array(velocity)
 
 
+# reads a row from the dataset of children. it is saved in git. then the graph
+# is normalized and interpolated. However it may not work like intended due to some changes in the structure
 def open_file_children(path, stroke=0):
     with open(path, 'r') as file:
         xml_data = file.read()
@@ -63,16 +70,12 @@ def open_file_children(path, stroke=0):
     timestamps_arr = np.array(timestamps)
     y_coordinates = np.array(y_coordinates)
     x_coordinates = np.array(x_coordinates)
-    if timestamps_arr[0]>3:
-        timestamps_arr -= timestamps_arr[0]
-        timestamps_arr /=1000
-        print("done")
-    x_coordinates -= np.min(x_coordinates)
-    y_coordinates -= np.min(y_coordinates)
-
+    x_coordinates, y_coordinates = normalize(x_coordinates, y_coordinates)
+    timestamps_arr = interpolate(timestamps_arr, n_points=global_number)
     return x_coordinates, y_coordinates, timestamps_arr
 
 
+# calculates the velocity, smoothes and interpolate it,
 def calculate_velocity(x, y, timestamps):
     velocity = [0]
     for i in range(1, len(x)):
@@ -83,17 +86,45 @@ def calculate_velocity(x, y, timestamps):
             velocity.append(velocity[-1])
             continue
         velocity.append(distance / time)
-    return np.array(velocity)
+    smoothed_velocity = extra_smooth(velocity, 9, 2)
+    smoothed_velocity = interpolate(smoothed_velocity, n_points=global_number)
+    return np.array(smoothed_velocity), velocity
 
 
+# smoothes the a given curve through savgol_filter. the applies the filter once
 def smooth_curve_2(velocity_data, window_size=20, poly_order=5):
     window_size = window_size  # Adjust as needed
-    poly_order = poly_order # Adjust as needed
+    poly_order = poly_order  # Adjust as needed
     smoothed_velocity = savgol_filter(velocity_data, window_size, poly_order)
     return smoothed_velocity
 
 
+# smoothes the a given curve through savgol_filter. the applies the filter twice.
+# emperical seen, it gets better reaults.
 def extra_smooth(velocity, window_size, poly):
     smoothed_velocity1 = smooth_curve_2(velocity, window_size, poly)
     smoothed_velocity2 = smooth_curve_2(smoothed_velocity1, window_size, poly)
     return smoothed_velocity2
+
+
+# centerize the graph around the origin
+def normalize(x, y):
+    m_x = np.min(x)
+    m_y = np.min(y)
+    M_x = np.max(x, axis=0)
+    M_y = np.max(y, axis=0)
+    normalized_X = (x - (M_x + m_x) / 2.0)  # / np.max(M_x - m_x)
+    normalized_Y = (y - (M_y + m_y) / 2.0)  # / np.max(M_y - m_y)
+    return normalized_X, normalized_Y
+
+
+# add points to a give curve. n_points is the number of points the graph should be.
+# nfs is not used yet in the algorith, and it represents how many points are added between every 2 points
+def interpolate(y_values, nfs=2, n_points=None, interp="cubic"):
+    time = np.linspace(0, len(y_values) - 1, len(y_values), endpoint=True)
+    if n_points == None:
+        time_inter = np.linspace(0, len(y_values) - 1, 1 + nfs * len(y_values - 1), endpoint=True)
+    else:
+        time_inter = np.linspace(0, len(y_values) - 1, n_points, endpoint=True)
+    f = interp1d(time, y_values, kind=interp)
+    return f(time_inter)

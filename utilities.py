@@ -1,7 +1,8 @@
-import matplotlib.pyplot as plt
+# this file hat help functions, which are not directly related to the algorithm
 import numpy as np
 
 
+# this function generates a log normal y coordinations for given parameters and x coordinations
 def generate_lognormal_curve(D, std_dev, mean, x_0, start, end, number_of_points):
     time = np.linspace(start, end, number_of_points)
     curve = np.zeros_like(time)
@@ -16,35 +17,12 @@ def generate_lognormal_curve(D, std_dev, mean, x_0, start, end, number_of_points
     return curve
 
 
-# 1 43 - 69
-# 2 60 - 75
-
-def corresponding_x_values(x_values, velocity_profile, v_3, x_3, sigma_accuracy = 200):
-    condition = (velocity_profile < (0.35 * v_3)) & (x_values < x_3)
-    corresponding_x_value1 = x_values[condition][-1]
-    condition = (velocity_profile < (0.68 * v_3)) & (x_values < x_3)
-    corresponding_x_value2 = x_values[condition][-1]
-    condition = (velocity_profile < (0.50 * v_3)) & (x_values > x_3)
-    if np.any(condition):
-        corresponding_x_value3 = x_values[condition][0]
-    else:
-        points_after_x3 = x_values[x_values > x_3]
-        corresponding_x_value3 = points_after_x3[int(len(points_after_x3)/2)]
-    condition = (velocity_profile < (0.80 * v_3)) & (x_values > x_3)
-    if np.any(condition):
-        corresponding_x_value4 = x_values[condition][0]
-    else:
-        points_after_x4 = x_values[x_values > x_3]
-        corresponding_x_value4 = points_after_x4[int(len(points_after_x4)*4 / 5)]
-    x_values_v2_inf1 = np.linspace(corresponding_x_value1, corresponding_x_value2, sigma_accuracy)
-    x_values_v4_inf2 = np.linspace(corresponding_x_value3, corresponding_x_value4, sigma_accuracy)
-    return x_values_v2_inf1, x_values_v4_inf2
-
-
+# calculates MSE, and returns the square root of it
 def calculate_MSE(real_y_values, forged_yvalues):
     return np.sqrt(np.mean((real_y_values - forged_yvalues) ** 2))
 
 
+# this function is only used for testing reason. it generates a sigma lognormal curve, which consists of 4 profiles
 def generate_4_lognormal_curves(timestamps):
     D_1 = 18  # Amplitude range(5 -> 70)
     std_dev_1 = 0.3  # Standard deviation (sigma) range(0.1 -> 0.45)
@@ -54,7 +32,7 @@ def generate_4_lognormal_curves(timestamps):
     D_2 = 15  # Amplitude range(5 -> 70)
     std_dev_2 = 0.3  # Standard deviation (sigma) range(0.1 -> 0.45)
     mean_2 = -1.6  # Mean (meu) range(-2.2 -> -1.6)
-    x_02 = 0.2  # shifted range(0 -> 1)
+    x_02 = 0.25  # shifted range(0 -> 1)
 
     D_3 = 26  # Amplitude range(5 -> 70)
     std_dev_3 = 0.1  # Standard deviation (sigma) range(0.1 -> 0.45)
@@ -74,6 +52,8 @@ def generate_4_lognormal_curves(timestamps):
 
     return velocity_profile
 
+
+# retunrs all indexes of local max of a give curve
 def get_local_max(curve):
     local_maxs = np.array([i for i in range(1, len(curve) - 1) if
                            curve[i] > curve[i - 1] and curve[i] >
@@ -81,6 +61,7 @@ def get_local_max(curve):
     return local_maxs
 
 
+# retunrs all indexes of local min of a give curve
 def get_local_min(curve):
     local_maxs = np.array([i for i in range(1, len(curve) - 1) if
                            curve[i] < curve[i - 1] and curve[i] <
@@ -88,6 +69,11 @@ def get_local_min(curve):
     return local_maxs
 
 
+# filters the local max and local min of the points under a given threshold, as the shall not represent any stroke.
+# it removes the local max and local min under this threshold while making sure that between every 2 max
+# there is a local min and between every 2 min there is a local max.
+# moreover, it makes sure that number of local max = the number of local min
+# for that the last point may be added as a local min
 def correct_local_extrems(local_min, local_max,x_values, y_values, threshold = 0.01):
     summit = np.max(y_values)
     local_min_copy = local_min.copy()
@@ -110,3 +96,26 @@ def correct_local_extrems(local_min, local_max,x_values, y_values, threshold = 0
             local_min_copy = local_min_copy[local_min_copy != min_to_remove]
             local_max_copy = local_max_copy[local_max_copy != max_to_remove]
     return local_min_copy, local_max_copy
+
+
+# returns the indexes inflection points of a graph. it assumes that the graph only 2 inflection points has.
+# this works for perfect lognormal profiles
+def inflection_points(x, y):
+    first_dervitive = np.gradient(y, x)
+    index1 = np.argmax(first_dervitive)
+    index2 = np.argmin(first_dervitive)
+    return index1, index2
+
+# returns the indexes edge points of a lognormal graph (t_1, t_5).
+def edge_points(x, y):
+    t_3 = np.argmax(y)
+    try:
+        t_1 = x[(y >= 0.01 * y[t_3]) & (x < x[t_3])][0]
+    except IndexError:
+        t_1 = x[0]
+    try:
+        t_5 = x[(y >= 0.01 * y[t_3]) & (x > x[t_3])][-1]
+    except IndexError:
+        t_5 = x[-1]
+    t_1_id, t_5_id = np.where(np.isin(x, [t_1, t_5]))[0]
+    return t_1_id, t_5_id
