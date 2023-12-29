@@ -1,5 +1,8 @@
 # this file is the main file. The functions in this file aim to estimate the start and end angles, the main method
 # is used to test the actual advance in the implementing. The file uses all other files.
+import math
+# TODO, try scaler loop for the parameter D
+# TODO, try velocity calculator AUC
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,174 +14,208 @@ from openfiles import calculate_velocity, open_file_children, extra_smooth
 from ranged_infelction_points import represent_curve, generate_curve_from_parameters
 
 
-# not used yet.
-def calculate_snr_dB(y):
-    signal_power = np.mean(y) ** 2
-    noise_power = np.var(y)
-    snr_dB = 10 * np.log10(signal_power / noise_power)
-    return snr_dB
+# ref original on-line signature, func(33), per point
+def calculate_distance_pp(t, D, sigma,  meu, t0):
+    t = t - t0
+    t[t < 0] = 0
+    return D/2 * (1+np.math.erf(np.log((t-t0)-meu)/(sigma*2**0.5)))
 
 
-# gets tha angle of at given index from the graph x and y, num_points is the number of points
-# from which the average is used to get the angle. this is because some noise can effect the
-# angle significantly
-def angle(index, x, y, num_points=1):
-    start_index = index
-    end_index = min(index + num_points + 1, len(x)-1)
-    dy = y[end_index] - y[start_index]
-    dx = x[end_index] - x[start_index]
-    angle_rad = np.arctan(dy/dx)
-
-    # plt.plot(x_values, y_values, color="green")
-    # plt.plot(x_values[start_index: end_index], y_values[start_index: end_index], color="orange")
-    # plt.show()
-
-    print(np.degrees(angle_rad))
-    return angle_rad
-
-
-# the distance travelled at some characteristic points
-# ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
-# section 3, function (34), refered as l(t_i)
-def traveled_distance(D_par, sigma_par, i):
-    if i == 1:
+# ref original on-line signature, func(34), characteristic point
+def calculate_distance_cp(D, sigma, point):
+    if point==1:
         return 0
-    elif i == 5:
-        return D_par
-    elif i == 2 or i == 3 or i == 4:
-        a = [np.nan, np.nan]
-        a.append((3 / 2) * sigma_par ** 2 + sigma_par * np.sqrt(((sigma_par ** 2) / 4) + 1))
-        a.append(sigma_par ** 2)
-        a.append((3 / 2) * sigma_par ** 2 - sigma_par * np.sqrt(((sigma_par ** 2) / 4) + 1))
-        return (D_par / 2) * (1 + np.math.erf(-a[i] / (sigma_par * (2 ** 0.5))))
+    if point==5:
+        return D
+    if 0 < point < 5:
+        point -= 2
+        sig_sq = sigma**2
+        a = [(3 / 2) * sig_sq + sigma * np.sqrt(((sig_sq) / 4) + 1),
+             sig_sq,
+             (3 / 2) * sig_sq - sigma * np.sqrt(((sig_sq) / 4) + 1)]
+
+        return D/2 * (1+np.math.erf(-a[point]/(sigma*(2**0.5))))
     return None
 
-
-# TODO: try it instead of traveled_distance
-# the distance travelled at some characteristic points
-# ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
-# section 3, function (33), refered as l(t-t_0, D, meu, sigma), not in use yet
-def traveled_distance_2(t, D, sigma, mu, t0):
-    t = t - t0
-    t[t<=0] = 0
-    dist = D / 2. * (1 + np.math.erf((np.log(t) - mu) / sigma * 0.707107))
-    return dist
+# the angle at this point of time, the angular position, ref iDeLog, func (3)
+def calculate_phi(t, D, sigma, meu, t0, theta_s, theta_e):
+    phi = calculate_distance_pp(t, D, t0, meu, sigma) / D * (theta_e - theta_s) + theta_s
+    return phi
 
 
-# returns the 5 characteristic_points of lognormal profile in following order:
-# begin, first inflection point, maxima, second inflection point, end
-# as defined in
-# https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
-def find_characteristic_points(x, y):
-    t_3 = np.argmax(y)
-    t_2, t_4 = utilities.inflection_points(x, y)
-    t_1, t_5 = utilities.edge_points(x, y)
-    characteristic_x = np.array([t_1, t_2, t_3, t_4, t_5])
-    return characteristic_x
+def XY_velocity_combination(velocity, t, D, sigma , mu, t0 , theta_s, theta_e):
+    if abs(theta_s - theta_e) <0.001:
+        Vx= velocity*np.cos(theta_s)
+        Vy= velocity*np.sin(theta_s)
+    else:
+        theta = calculate_phi(t, D, sigma, mu, t0, theta_s, theta_e)
+        Vx= velocity*np.cos(theta)
+        Vy= velocity*np.sin(theta)
+    return Vx, Vy
 
 
-# returns the change in angle as defined in
-# ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
-# section 3, function (45)
-def delt_angle(characteristic_times, x_values_par, y_values_par, D_par, sigma_par):
-    plt.plot(x_values_par, y_values_par, marker="o", zorder=1, label="actual drawing")
-    plt.scatter(x_values_par[characteristic_times],y_values_par[characteristic_times], color="red", zorder=2,
-                label="the points in the\n drawing which correspond the \ncharacteristic points in lognormal profile")
-    plt.title("characteristic points in actual drawing")
-    plt.xlabel("x-co")
-    plt.ylabel("y-co")
-    plt.legend()
-    plt.show()
-    characteristic_times = np.insert(characteristic_times, 0, -1000)
-    term1_1 = angle(characteristic_times[2], x_values_par, y_values_par)
-    a = np.degrees(term1_1)
-    term1_2 = angle(characteristic_times[4], x_values_par, y_values_par)
-    b = np.degrees(term1_2)
-    term2_1 = traveled_distance(D_par, sigma_par, 2)
-    term2_2 = traveled_distance(D_par, sigma_par, 4)
-    return (term1_1 - term1_2) / (term2_1 - term2_2)
+# TODO: I have to look again at it, ref iDeLog func(4)
+def estimateLxy(t, D, sigma, meu, t0, theta_s, theta_e, shift=(0, 0), dt=0.01):
+    dtheta= theta_e - theta_s
+    if dtheta <0.001:
+        distance = calculate_distance_pp(t, D, sigma, meu, t0)
+        average_velocity_x = distance * np.cos(theta_s) / dt + shift[0]
+        average_velocity_y = distance * np.sin(theta_s) / dt + shift[0]
+    else:
+        theta = calculate_phi(t, D, sigma, meu, t0, theta_s, theta_e)
+        dD = D/dtheta
+        average_velocity_x = dD * (np.sin(theta) - np.sin(theta_s)) / dt + shift[0]
+        average_velocity_y = dD * (np   .cos(theta_s) - np.cos(theta)) / dt + shift[1]
+    return average_velocity_x, average_velocity_y
 
 
-# returns start and end angle as defined in
-# ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
-# section 3, functions (36a) and (36b)
-def estimate_angles(delta_phi_par, characteristic_points_par, x, y, D_par, sigma_par):
-    term1 = angle(characteristic_points_par[2], x, y)
-    term2 = traveled_distance(D, sigma_par, 3) - traveled_distance(D_par, sigma_par, 1)
-    theta_start = term1 - delta_phi_par * term2
-    term2 = traveled_distance(D, sigma_par, 5) - traveled_distance(D_par, sigma_par, 3)
-    theta_end = term1 - delta_phi_par * term2
-    return theta_start, theta_end
+# characteristic_points are indexes
+def estimate_theta_SE(x_values, y_values, D, sigma, characteristic_points):
+    _, xinf1, x3, xinf2, _ = characteristic_points
+
+    d1 = calculate_distance_cp(D, sigma, 1)
+    d2 = calculate_distance_cp(D, sigma, 2)
+    d3 = calculate_distance_cp(D, sigma, 3)
+    d4 = calculate_distance_cp(D, sigma, 4)
+    d5 = calculate_distance_cp(D, sigma, 5)
+
+    print(y_values[xinf1], x_values[xinf1])
+    print(y_values[x3], x_values[x3])
+    print(y_values[xinf2], x_values[xinf2])
+
+    angle_t2 = np.arctan(np.gradient(y_values, x_values)[xinf1])
+    angle_t3 = np.arctan(np.gradient(y_values, x_values)[x3])
+    angle_t4 = np.arctan(np.gradient(y_values, x_values)[xinf2])
+
+    degt2 = np.degrees(angle_t2)
+    while degt2<0:
+        degt2+=360
+    degt3 = np.degrees(angle_t3)
+    while degt3<0:
+        degt3+=360
+    degt4 = np.degrees(angle_t4)
+    while degt4 < 0:
+        degt4 += 360
+    # plt.plot(x_values, y_values, zorder=0, marker="o")
+    # plt.scatter(x_values[[xinf1, x3, xinf2]], y_values[[xinf1, x3, xinf2]], color="red", zorder=1)
+    # plt.show()
+    dAngle = angle_t4 - angle_t2
+    # TODO this line should be tried
+    # dAngle = math.copysign(2 * math.pi - abs(dAngle), -dAngle) if abs(dAngle) > 3./2 * math.pi else dAngle
+    dAngle = dAngle / (d4 - d2)
+
+    theta_s = angle_t3 - dAngle * (d3 - d1)
+    theta_e = angle_t3 + dAngle * (d5 - d3)
+    return theta_s, theta_e
+
 
 
 if __name__ == '__main__':
-    # x_values, y_values, timestamps_arr = open_file_children(
-    #     'DB\\3\\Dataset\\tablet\\4\\singletouch-draganddrop.xml', 3)
-    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\right_sq_bracket05.xml")
-    plt.figure(5)
+    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\left_sq_bracket03.xml")  #v02
+    # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_signature("DB\\Task1\\U1S1.TXT")
     plt.plot(timestamps_arr, smoothed_velocity, label="velocity")
     plt.plot(timestamps_arr, velocity, label="veolcity before smoothing")
     plt.title("smoothed velocity")
     plt.xlabel("time")
     plt.ylabel("velocity")
     plt.legend()
-    plt.show()
-    strokes = represent_curve(timestamps_arr, smoothed_velocity.copy())
-    regenerated_curve = generate_curve_from_parameters(strokes, timestamps_arr)
-    plt.plot(timestamps_arr, velocity, label="original", color="cyan")
-    plt.plot(timestamps_arr, regenerated_curve, label="regenerated")
-    plt.plot(timestamps_arr, smoothed_velocity, label="smoothed", color="purple")
-    plt.legend()
     plt.figure(2)
     plt.plot(x_values, y_values, marker="o")
     plt.show()
-    print(utilities.calculate_MSE(regenerated_curve, smoothed_velocity))
 
+    strokes = represent_curve(timestamps_arr, smoothed_velocity.copy())
+    regenerated_curve = generate_curve_from_parameters(strokes, timestamps_arr)
+    openfiles.interpolate(regenerated_curve, 10, 3)
+    plt.plot(timestamps_arr, velocity, label="original", color="cyan")
+    plt.plot(timestamps_arr, regenerated_curve, label="regenerated", marker="o")
+    plt.plot(timestamps_arr, smoothed_velocity, label="smoothed", color="purple")
+    plt.legend()
+    plt.show()
+
+    print(strokes)
     angles = []
-    time = np.linspace(timestamps_arr[0], timestamps_arr[-1], len(timestamps_arr))
-    X = np.zeros_like(time)
-    Y = np.zeros_like(time)
-
-    for stroke_order in range(len(strokes)):
-        D = strokes[stroke_order][0]
-        sigma = strokes[stroke_order][1]
-        meu = strokes[stroke_order][2]
-        x_0 = strokes[stroke_order][3]
-
-        print("D: ", D)
-        print("sigma: ", sigma)
-        print("meu: ", meu)
-        print("x_0: ", x_0)
-
-        angular_curve = utilities.generate_lognormal_curve(D, sigma, meu, x_0, time[0], time[-1], len(time))
-        characteristic_points_x = find_characteristic_points(time, angular_curve)
-        plt.plot(time, angular_curve)
-        plt.scatter(time[characteristic_points_x], angular_curve[characteristic_points_x], label="characteristic points")
-        plt.title("characteristic points of actual curve")
-        plt.xlabel("time")
-        plt.ylabel("velocity")
-        plt.legend()
-        plt.show()
-        delta_phi = delt_angle(characteristic_points_x, x_values, y_values, D, sigma)
-        theta_s, theta_e = estimate_angles(delta_phi, characteristic_points_x, x_values, y_values, D, sigma)
+    for stroke in strokes:
+        D, sigma, meu, t0 = stroke
+        actual_curve = utilities.generate_lognormal_curve(D, sigma, meu, t0, timestamps_arr[0], timestamps_arr[-1], len(timestamps_arr))
+        characteristic_points = utilities.find_char_points_lognormal(timestamps_arr, sigma, meu, t0)
+        # plt.plot(timestamps_arr, actual_curve, zorder=0)
+        # plt.scatter(timestamps_arr[characteristic_points], actual_curve[characteristic_points], color="red", zorder=1)
+        # plt.figure(2)
+        theta_s, theta_e = estimate_theta_SE(x_values, y_values, D, sigma, characteristic_points)
         angles.append((theta_s, theta_e))
+        print(np.degrees(theta_s), np.degrees(theta_e))
+        # plt.plot(x_values, y_values)
+        # plt.scatter(x_values[characteristic_points], y_values[characteristic_points], color="red")
+        # plt.show()
 
-    for stroke, angele in zip(strokes, angles):
+    acX = np.zeros_like(timestamps_arr)
+    acY = np.zeros_like(timestamps_arr)
 
-        D = stroke[0]
-        sigma = stroke[1]
-        meu = stroke[2]
-        x_0 = stroke[3]
-        theta_s = angele[0]
-        theta_e = angele[1]
-        new_X, new_Y = draw_stroke(D, theta_s, theta_e , time, x_0, meu, sigma)
-        print(f"D: {D}\t sigma: {sigma}\t meu: {meu}\t X_0:{x_0}\t theta_s: {np.degrees(theta_s)}\t theta_e: {np.degrees(theta_e)}")
-        plt.plot(x_values, y_values, label="real drawing")
-        X[~np.isnan(new_X)] += new_X[~np.isnan(new_X)]
-        Y[~np.isnan(new_Y)] += new_Y[~np.isnan(new_Y)]
-        plt.plot(X, Y, label="generated drawing")
-        plt.title("real drawing vs generated")
-        plt.xlabel("x-co")
-        plt.ylabel("y-co")
-        plt.legend()
+    local_max, local_min = utilities.get_extrems(smoothed_velocity)
+    local_min, local_max = utilities.correct_local_extrems(local_min, local_max, timestamps_arr, smoothed_velocity)
+    local_min = np.insert(local_min, 0, 0)
+    plt.plot(timestamps_arr, smoothed_velocity)
+    plt.scatter(timestamps_arr[local_min], smoothed_velocity[local_min])
+    plt.scatter(timestamps_arr[local_max], smoothed_velocity[local_max])
+    plt.show()
+    for stroke, angle, i in zip(strokes, angles, range(len(strokes))):
+        D, sigma, meu, t0 = stroke
+
+        vx_selected = timestamps_arr[local_min[i]:local_min[i+1]]
+        vy_selected = regenerated_curve[local_min[i]:local_min[i+1]]
+        area_under_curve = np.trapz(vy_selected, vx_selected)
+        D2 = area_under_curve
+        D = np.mean([D, D2])
+        print((D, D2))
+
+        theta_s, theta_e = angle
+        X, Y = draw_stroke(D, theta_s, theta_e, timestamps_arr, t0, meu, sigma)
+        acX[~np.isnan(X)] += X[~np.isnan(X)]
+        acY[~np.isnan(Y)] += Y[~np.isnan(Y)]
+        plt.plot(X, Y)
+        plt.plot(x_values, y_values)
+        plt.plot(acX, acY, color="pink")
         plt.show()
+
+    acX -= np.min(acX)
+    acY -= np.min(acY)
+    plt.plot(x_values, y_values, color="red", label="original")
+    plt.plot(acX, acY, color="black", label="regeneratd")
+    plt.title("final result")
+    plt.legend()
+    plt.show()
+
+    # # acX_r = np.array([])
+    # # acY_r = np.array([])
+    # acX_r = np.zeros_like(timestamps_arr)
+    # acY_r = np.zeros_like(timestamps_arr)
+    # for stroke, angle, i in zip(strokes, angles, range(len(strokes))):
+    #     D, sigma, meu, t0 = stroke
+    #
+    #     vx_selected = timestamps_arr[local_min[i]:local_min[i+1]]
+    #     vy_selected = regenerated_curve[local_min[i]:local_min[i+1]]
+    #     area_under_curve = np.trapz(vy_selected, vx_selected)
+    #     D2 = area_under_curve
+    #     D = np.mean([D, D2])
+    #     print((D, D2))
+    #
+    #     theta_s, theta_e = angle
+    #     X, Y = draw_stroke(D, theta_s, theta_e, timestamps_arr, t0, meu, sigma)
+    #     acX_r[~np.isnan(X)] += X[~np.isnan(X)]
+    #     acY_r[~np.isnan(Y)] += Y[~np.isnan(Y)]
+    #     plt.plot(X, Y)
+    #     plt.scatter(X[~np.isnan(X)][0], Y[~np.isnan(Y)][0])
+    #     plt.scatter(X[~np.isnan(X)][-1], Y[~np.isnan(Y)][-1], color="red")
+    #     plt.plot(x_values, y_values)
+    #     plt.plot(acX_r, acY_r, color="red")
+    #     plt.show()
+    # acX_r -= np.min(acX_r)
+    # acY_r -= np.min(acY_r)
+    # plt.plot(x_values, y_values, color="red", label="original")
+    # plt.plot(acX_r, acY_r, color="black", label="regeneratd")
+    # plt.title("final result")
+    # plt.legend()
+    # plt.show()
+
+
+

@@ -1,11 +1,13 @@
 # this file hat help functions, which are not directly related to the algorithm
+import matplotlib.pyplot as plt
 import numpy as np
+from scipy.interpolate import interp1d
 
 
 # this function generates a log normal y coordinations for given parameters and x coordinations
 def generate_lognormal_curve(D, std_dev, mean, x_0, start, end, number_of_points):
-    time = np.linspace(start, end, number_of_points)
-    curve = np.zeros_like(time)
+    time = np.linspace(start, end, number_of_points, dtype="float64")
+    curve = np.zeros_like(time, dtype="float64")
     if std_dev == 0:
         return curve
     # Calculate the curve only for values greater than or equal to x_0
@@ -17,32 +19,33 @@ def generate_lognormal_curve(D, std_dev, mean, x_0, start, end, number_of_points
     return curve
 
 
-# calculates MSE, and returns the square root of it
+# calculates MSE
 def calculate_MSE(real_y_values, forged_yvalues):
-    return np.sqrt(np.mean((real_y_values - forged_yvalues) ** 2))
+    condition = ~np.isnan(real_y_values) & ~np.isnan(forged_yvalues)
+    return np.mean((real_y_values[condition] - forged_yvalues[condition]) ** 2)
 
 
 # this function is only used for testing reason. it generates a sigma lognormal curve, which consists of 4 profiles
 def generate_4_lognormal_curves(timestamps):
-    D_1 = 18  # Amplitude range(5 -> 70)
+    D_1 = 24  # Amplitude range(5 -> 70)
     std_dev_1 = 0.3  # Standard deviation (sigma) range(0.1 -> 0.45)
-    mean_1 = -1.8  # Mean (meu) range(-2.2 -> -1.6)
+    mean_1 = -1.6  # Mean (meu) range(-2.2 -> -1.6)
     x_01 = 0.1  # shifted range(0 -> 1)
 
     D_2 = 15  # Amplitude range(5 -> 70)
     std_dev_2 = 0.3  # Standard deviation (sigma) range(0.1 -> 0.45)
     mean_2 = -1.6  # Mean (meu) range(-2.2 -> -1.6)
-    x_02 = 0.25  # shifted range(0 -> 1)
+    x_02 = 0.3  # shifted range(0 -> 1)
 
     D_3 = 26  # Amplitude range(5 -> 70)
     std_dev_3 = 0.1  # Standard deviation (sigma) range(0.1 -> 0.45)
-    mean_3 = -1.7  # Mean (meu) range(-2.2 -> -1.6)
+    mean_3 = -2  # Mean (meu) range(-2.2 -> -1.6)
     x_03 = 0.5  # shifted range(0 -> 1)
 
-    D_4 = 40  # Amplitude range(5 -> 70)
+    D_4 = 45  # Amplitude range(5 -> 70)
     std_dev_4 = 0.2  # Standard deviation (sigma) range(0.1 -> 0.45)
-    mean_4 = -2.1  # Mean (meu) range(-2.2 -> -1.6)
-    x_04 = 0.7  # shifted range(0 -> 1)
+    mean_4 = -1.4  # Mean (meu) range(-2.2 -> -1.6)
+    x_04 = 0.5  # shifted range(0 -> 1)
 
     velocity1 = generate_lognormal_curve(D_1, std_dev_1, mean_1, x_01, timestamps[0], timestamps[-1], len(timestamps))
     velocity2 = generate_lognormal_curve(D_2, std_dev_2, mean_2, x_02, timestamps[0], timestamps[-1], len(timestamps))
@@ -69,6 +72,10 @@ def get_local_min(curve):
     return local_maxs
 
 
+def get_extrems(curve):
+    return get_local_max(curve), get_local_min(curve)
+
+
 # filters the local max and local min of the points under a given threshold, as the shall not represent any stroke.
 # it removes the local max and local min under this threshold while making sure that between every 2 max
 # there is a local min and between every 2 min there is a local max.
@@ -92,30 +99,40 @@ def correct_local_extrems(local_min, local_max,x_values, y_values, threshold = 0
         min_to_remove = local_min_copy[np.where(y_values[local_min_copy] == min)[0]]
         max_to_remove = local_max_copy[np.where(y_values[local_max_copy] == max)[0]]
         condition_1 = max < (threshold * summit)
-        if condition_1:
+        condition_2 = (y_values[index_max] - y_values[index_min]) < (0.1 * np.max(y_values)) # 0.1
+        if condition_1 or condition_2:
             local_min_copy = local_min_copy[local_min_copy != min_to_remove]
             local_max_copy = local_max_copy[local_max_copy != max_to_remove]
     return local_min_copy, local_max_copy
 
 
-# returns the indexes inflection points of a graph. it assumes that the graph only 2 inflection points has.
-# this works for perfect lognormal profiles
-def inflection_points(x, y):
-    first_dervitive = np.gradient(y, x)
-    index1 = np.argmax(first_dervitive)
-    index2 = np.argmin(first_dervitive)
-    return index1, index2
 
-# returns the indexes edge points of a lognormal graph (t_1, t_5).
-def edge_points(x, y):
-    t_3 = np.argmax(y)
-    try:
-        t_1 = x[(y >= 0.01 * y[t_3]) & (x < x[t_3])][0]
-    except IndexError:
-        t_1 = x[0]
-    try:
-        t_5 = x[(y >= 0.01 * y[t_3]) & (x > x[t_3])][-1]
-    except IndexError:
-        t_5 = x[-1]
-    t_1_id, t_5_id = np.where(np.isin(x, [t_1, t_5]))[0]
-    return t_1_id, t_5_id
+def find_char_points_lognormal(x_values, sigma, meu, x_0):
+    v1 = x_0+np.exp(meu-3*sigma)
+    p1 = find_nearest_index(x_values, v1)
+    v2 = x_0+np.exp(meu-(1.5*sigma**2+sigma*np.sqrt(0.25*sigma**2+1)))
+    p2 = find_nearest_index(x_values, v2)
+    v3 = x_0+np.exp(meu-sigma**2)
+    p3 = find_nearest_index(x_values, v3)
+    v4 = x_0+np.exp(meu-(1.5*sigma**2-sigma*np.sqrt(0.25*sigma**2+1)))
+    p4 = find_nearest_index(x_values, v4)
+    v5 = x_0+np.exp(meu+3*sigma)
+    p5 = find_nearest_index(x_values, v5)
+    return np.array([p1, p2, p3, p4, p5])
+
+
+# returns the  index of the nearst value in the array to a given value.
+def find_nearest_index(arr, value):
+    absolute_diff = np.abs(np.array(arr) - value)
+    return np.argmin(absolute_diff)
+
+
+
+if __name__ == '__main__':
+    x = np.linspace(0, 0.4, 3000)
+    y = generate_lognormal_curve(60, 0.308, -2.2, 0.1, x[0], x[-1], len(x))
+    charpoints = find_char_points_lognormal(x, 0.308, -2.2, 0.1)
+    print(x[charpoints])
+    plt.plot(x, y)
+    plt.scatter(x[charpoints], y[charpoints])
+    plt.show()
