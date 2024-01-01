@@ -106,7 +106,7 @@ def correct_local_extrems(local_min, local_max,x_values, y_values, threshold = 0
     return local_min_copy, local_max_copy
 
 
-
+# returns the indecies of the charcteristic_points
 def find_char_points_lognormal(x_values, sigma, meu, x_0):
     v1 = x_0+np.exp(meu-3*sigma)
     p1 = find_nearest_index(x_values, v1)

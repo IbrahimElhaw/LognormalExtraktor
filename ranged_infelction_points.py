@@ -105,7 +105,6 @@ def correct_D(bestfit, x_values, velocity):
     #         generate_lognormal_curve(bestfit[0], bestfit[1], bestfit[2], bestfit[3], x_values[0], x_values[-1],
     #                                  len(x_values))):
     #     bestfit = (bestfit[0] + 0.1, bestfit[1], bestfit[2], bestfit[3])
-    print("corrected")
     return bestfit
 
 
@@ -132,7 +131,6 @@ def correct_t0(bestfit, x_values, trimmed_velocity):
             break
         new_t0 += 0.01
         MSE = np.min([MSE2, MSE3])
-        print("correctin t0")
     bestfit2 = [D, sigma, meu, new_t0]
     return bestfit2
 
@@ -167,22 +165,22 @@ def represent_curve(x_values, y_values):
         x_values_v2_inf1, x_values_v4_inf2 = corresponding_x_values(x_values, y_values, v_3, t_3,
                                                                     sigma_accuracy)
 
-        plt.plot(x_values, y_values, color="red", label= "velocity")
-        plt.plot(x_values_v2_inf1, v2_inf1_range, color="black", label="range of inflection points")
-        plt.plot(x_values_v4_inf2, v4_inf2_range, color="black", label="range of inflection points")
-        plt.title("range og infelction points")
-        plt.xlabel("time")
-        plt.ylabel("velocity")
-        plt.legend()
-        plt.show()
-
-        plt.plot(x_values, trimmed_velocity, color="cyan", label="actual stroke")
-        plt.plot(x_values, y_values, label="velocity")
-        plt.title("actual stroke")
-        plt.xlabel("time")
-        plt.ylabel("velocity")
-        plt.legend()
-        plt.show()
+        # plt.plot(x_values, y_values, color="red", label= "velocity")
+        # plt.plot(x_values_v2_inf1, v2_inf1_range, color="black", label="range of inflection points")
+        # plt.plot(x_values_v4_inf2, v4_inf2_range, color="black", label="range of inflection points")
+        # plt.title("range og infelction points")
+        # plt.xlabel("time")
+        # plt.ylabel("velocity")
+        # plt.legend()
+        # plt.show()
+        #
+        # plt.plot(x_values, trimmed_velocity, color="cyan", label="actual stroke")
+        # plt.plot(x_values, y_values, label="velocity")
+        # plt.title("actual stroke")
+        # plt.xlabel("time")
+        # plt.ylabel("velocity")
+        # plt.legend()
+        # plt.show()
 
         params = []
 
@@ -202,11 +200,9 @@ def represent_curve(x_values, y_values):
                         t_0 = calculate_t_0(three_char_time[alpha], a[alpha], meu)
                         D = calculate_D(a[alpha], meu, sigma, three_char_velocity[alpha])
                         params.append([D, sigma, meu, t_0])
-        print(len(params))
         bestMSE = float("inf")
         bestfit = None
         best_generate = np.zeros_like(y_values)
-        print("len of param=", len(params))
         for param in params:
             D, sigma, meu, t_0,  = param
             generated_profile = generate_lognormal_curve(D, sigma, meu, t_0, x_values[0], x_values[-1], len(x_values))

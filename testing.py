@@ -9,7 +9,7 @@ import numpy as np
 
 import openfiles
 import utilities
-from draw_profile import draw_stroke
+from draw_profile import draw_stroke_updated, draw_stroke_original
 from openfiles import calculate_velocity, open_file_children, extra_smooth
 from ranged_infelction_points import represent_curve, generate_curve_from_parameters
 
@@ -79,23 +79,19 @@ def estimate_theta_SE(x_values, y_values, D, sigma, characteristic_points):
     d4 = calculate_distance_cp(D, sigma, 4)
     d5 = calculate_distance_cp(D, sigma, 5)
 
-    print(y_values[xinf1], x_values[xinf1])
-    print(y_values[x3], x_values[x3])
-    print(y_values[xinf2], x_values[xinf2])
-
     angle_t2 = np.arctan(np.gradient(y_values, x_values)[xinf1])
     angle_t3 = np.arctan(np.gradient(y_values, x_values)[x3])
     angle_t4 = np.arctan(np.gradient(y_values, x_values)[xinf2])
 
-    degt2 = np.degrees(angle_t2)
-    while degt2<0:
-        degt2+=360
-    degt3 = np.degrees(angle_t3)
-    while degt3<0:
-        degt3+=360
-    degt4 = np.degrees(angle_t4)
-    while degt4 < 0:
-        degt4 += 360
+    # degt2 = np.degrees(angle_t2)
+    # while degt2<0:
+    #     degt2+=360
+    # degt3 = np.degrees(angle_t3)
+    # while degt3<0:
+    #     degt3+=360
+    # degt4 = np.degrees(angle_t4)
+    # while degt4 < 0:
+    #     degt4 += 360
     # plt.plot(x_values, y_values, zorder=0, marker="o")
     # plt.scatter(x_values[[xinf1, x3, xinf2]], y_values[[xinf1, x3, xinf2]], color="red", zorder=1)
     # plt.show()
@@ -109,9 +105,24 @@ def estimate_theta_SE(x_values, y_values, D, sigma, characteristic_points):
     return theta_s, theta_e
 
 
+# param are the indexes of the 5 char points, the middle 3 are more reliable.
+def left_before_right(x_values, param):
+    point1 = x_values[param[1]]
+    point2 = x_values[param[2]]
+    point3 = x_values[param[3]]
+
+    condition1 = point2 > point1
+    condition2 = point3 > point2
+    condition3 = point3 > point1
+
+    n_con_satisfied = sum([condition1, condition2, condition3])
+    print("sum of left before right =", n_con_satisfied, " and the result is ", n_con_satisfied >= 2)
+    return n_con_satisfied >= 2
+
+
 
 if __name__ == '__main__':
-    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\left_sq_bracket03.xml")  #v02
+    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\v02.xml")  #v02
     # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_signature("DB\\Task1\\U1S1.TXT")
     plt.plot(timestamps_arr, smoothed_velocity, label="velocity")
     plt.plot(timestamps_arr, velocity, label="veolcity before smoothing")
@@ -123,9 +134,9 @@ if __name__ == '__main__':
     plt.plot(x_values, y_values, marker="o")
     plt.show()
 
-    strokes = represent_curve(timestamps_arr, smoothed_velocity.copy())
+    strokes = represent_curve(timestamps_arr, smoothed_velocity.copy())  # strokes in form (D, sigma, meu, t0)^n
     regenerated_curve = generate_curve_from_parameters(strokes, timestamps_arr)
-    openfiles.interpolate(regenerated_curve, 10, 3)
+    plt.title("the whole regenerated curve")
     plt.plot(timestamps_arr, velocity, label="original", color="cyan")
     plt.plot(timestamps_arr, regenerated_curve, label="regenerated", marker="o")
     plt.plot(timestamps_arr, smoothed_velocity, label="smoothed", color="purple")
@@ -159,17 +170,25 @@ if __name__ == '__main__':
     plt.scatter(timestamps_arr[local_max], smoothed_velocity[local_max])
     plt.show()
     for stroke, angle, i in zip(strokes, angles, range(len(strokes))):
-        D, sigma, meu, t0 = stroke
+        D1, sigma, meu, t0 = stroke
 
         vx_selected = timestamps_arr[local_min[i]:local_min[i+1]]
         vy_selected = regenerated_curve[local_min[i]:local_min[i+1]]
         area_under_curve = np.trapz(vy_selected, vx_selected)
         D2 = area_under_curve
-        D = np.mean([D, D2])
-        print((D, D2))
+        # TODO: choose between D1 and D2 and the mean
+        D = np.mean([D1, D2])
+        # D = D2
+        # print((D, D2))
 
         theta_s, theta_e = angle
-        X, Y = draw_stroke(D, theta_s, theta_e, timestamps_arr, t0, meu, sigma)
+        l_befor_r = left_before_right(x_values, utilities.find_char_points_lognormal(timestamps_arr, sigma, meu, t0))
+        X, Y = draw_stroke_updated(D, theta_s, theta_e, timestamps_arr, t0, meu, sigma, l_befor_r)
+        # X, Y = draw_stroke_original(D, theta_s, theta_e, timestamps_arr, t0, meu, sigma)
+        # TODO: centering
+        # X -= np.min(X)
+        # Y -= np.min(Y)
+
         acX[~np.isnan(X)] += X[~np.isnan(X)]
         acY[~np.isnan(Y)] += Y[~np.isnan(Y)]
         plt.plot(X, Y)
