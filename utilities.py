@@ -99,7 +99,8 @@ def correct_local_extrems(local_min, local_max,x_values, y_values, threshold = 0
         min_to_remove = local_min_copy[np.where(y_values[local_min_copy] == min)[0]]
         max_to_remove = local_max_copy[np.where(y_values[local_max_copy] == max)[0]]
         condition_1 = max < (threshold * summit)
-        condition_2 = (y_values[index_max] - y_values[index_min]) < (0.1 * np.max(y_values)) # 0.1
+        # condition_2 = (y_values[index_max] - y_values[index_min]) < (0.1 * np.max(y_values)) # 0.1
+        condition_2 = False
         if condition_1 or condition_2:
             local_min_copy = local_min_copy[local_min_copy != min_to_remove]
             local_max_copy = local_max_copy[local_max_copy != max_to_remove]

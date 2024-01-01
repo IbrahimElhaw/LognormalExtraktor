@@ -121,8 +121,8 @@ def left_before_right(x_values, param):
 
 
 
-if __name__ == '__main__':
-    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\v02.xml")  #v02
+if __name__ == '__main__': 
+    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\left_sq_bracket03.xml")  #v02
     # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_signature("DB\\Task1\\U1S1.TXT")
     plt.plot(timestamps_arr, smoothed_velocity, label="velocity")
     plt.plot(timestamps_arr, velocity, label="veolcity before smoothing")
@@ -177,8 +177,8 @@ if __name__ == '__main__':
         area_under_curve = np.trapz(vy_selected, vx_selected)
         D2 = area_under_curve
         # TODO: choose between D1 and D2 and the mean
-        D = np.mean([D1, D2])
-        # D = D2
+        # D = np.mean([D1, D2])
+        D = D2
         # print((D, D2))
 
         theta_s, theta_e = angle
@@ -196,8 +196,7 @@ if __name__ == '__main__':
         plt.plot(acX, acY, color="pink")
         plt.show()
 
-    acX -= np.min(acX)
-    acY -= np.min(acY)
+    acX, acY = openfiles.normalize(acX, acY)
     plt.plot(x_values, y_values, color="red", label="original")
     plt.plot(acX, acY, color="black", label="regeneratd")
     plt.title("final result")

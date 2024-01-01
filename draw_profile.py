@@ -33,13 +33,13 @@ def draw_stroke_updated(D, theta_s, theta_e, time, x_0, meu, sigma, left_before_
             S_y.append(-point_y)
     return numpy.array(S_x), numpy.array(S_y)
 
-def draw_stroke_original(D, theta_s, theta_e, x_values, x_0, meu, sigma):
+def draw_stroke_original(D, theta_s, theta_e, time, x_0, meu, sigma):
     S_x = []
     S_y = []
-    for x, y in zip (x_values, x_values):
-        point_x = (D / (theta_e - theta_s)) * (np.sin(phi(x, x_0, meu, sigma, theta_s, theta_e)) - np.sin(theta_s))
+    for t in time:
+        point_x = (D / (theta_e - theta_s)) * (np.sin(phi(t, x_0, meu, sigma, theta_s, theta_e)) - np.sin(theta_s))
         S_x.append(point_x)
-        point_y = (D / (theta_e - theta_s)) * (-np.cos(phi(y, x_0, meu, sigma, theta_s, theta_e)) + np.cos(theta_s))
+        point_y = (D / (theta_e - theta_s)) * (-np.cos(phi(t, x_0, meu, sigma, theta_s, theta_e)) + np.cos(theta_s))
         S_y.append(point_y)
     return numpy.array(S_x), numpy.array(S_y)
 
