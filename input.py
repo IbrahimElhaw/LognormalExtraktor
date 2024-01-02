@@ -4,7 +4,32 @@ import numpy as np
 import pygame
 import time
 
-import openfiles
+from scipy.signal import savgol_filter
+
+
+def calculate_velocity(x, y, timestamps):
+    velocity = [0]
+    for i in range(1, len(x)):
+        distance = ((x[i] - x[i - 1]) ** 2 + (
+                y[i] - y[i - 1]) ** 2) ** 0.5
+        time = timestamps[i] - timestamps[i - 1]
+        if time == 0:
+            velocity.append(velocity[-1])
+            continue
+        velocity.append(distance / time)
+    return velocity
+
+def normalize(x, y):
+    m_x = np.min(x)
+    m_y = np.min(y)
+    M_x = np.max(x, axis=0)
+    M_y = np.max(y, axis=0)
+    # normalized_X = (x - (M_x + m_x) / 2.0)  / np.max(M_x - m_x)
+    # normalized_Y = (y - (M_y + m_y)  / 2.0)  / np.max(M_y - m_y)
+    normalized_X = (x - m_x) / np.max(M_x - m_x)
+    normalized_Y = (y - m_y) / np.max(M_y - m_y)
+    return normalized_X, normalized_Y
+
 
 def get_input():
     pygame.init()
@@ -67,7 +92,7 @@ def get_input():
 
 def show_input(x_values, y_values, timestamps):
     print("Number of captured points:", len(x_values))
-    velocity = openfiles.calculate_velocity(x_values, y_values, timestamps)
+    velocity = calculate_velocity(x_values, y_values, timestamps)
 
     plt.plot(x_values, y_values, marker='o', color="black")
     plt.scatter(x_values[0], y_values[0])
@@ -76,56 +101,56 @@ def show_input(x_values, y_values, timestamps):
     plt.show()
 
 
-x, y, t = get_input()
-show_input(x, y, t)
+# smoothes the a given curve through savgol_filter. the applies the filter once
+def smooth_curve_2(velocity_data, window_size=20, poly_order=5):
+    window_size = window_size  # Adjust as needed
+    poly_order = poly_order  # Adjust as needed
+    smoothed_velocity = savgol_filter(velocity_data, window_size, poly_order)
+    return smoothed_velocity
 
 
+# smoothes the a given curve through savgol_filter. the applies the filter twice.
+# emperical seen, it gets better reaults.
+def extra_smooth(velocity, window_size, poly=2): # int((global_number/5))
+    smoothed_velocity1 = smooth_curve_2(velocity, window_size, poly)
+    d_window = 10
+    while window_size -d_window > poly:
+        smoothed_velocity1 = smooth_curve_2(smoothed_velocity1, window_size -10 , poly)
+        d_window+=10
+    return smoothed_velocity1
 
-    ##########################################################################
 
-    # import matplotlib.pyplot as plt
-    # import time
-    #
-    # import openfiles
-    #
-    # recording = False
-    # x_values = []
-    # y_values = []
-    # timestamps = []
-    #
-    # def on_mouse_event(event):
-    #     global recording
-    #
-    #     if event.inaxes:
-    #         x = event.xdata
-    #         y = event.ydata
-    #         timestamp = time.time()  # Capture the current time
-    #
-    #         if event.name == 'button_press_event':
-    #             recording = True
-    #             x_values.append(x)
-    #             y_values.append(y)
-    #             timestamps.append(timestamp)
-    #             plt.scatter(x, y, color='blue')
-    #             plt.draw()
-    #             plt.xlim(0, 1)
-    #             plt.ylim(0, 1)
-    #
-    #         elif event.name == 'motion_notify_event' and recording:
-    #             x_values.append(x)
-    #             y_values.append(y)
-    #             timestamps.append(timestamp)
-    #             plt.scatter(x, y, color='blue')
-    #             plt.draw()
-    #
-    #         elif event.name == 'button_release_event':
-    #             recording = False
-    #
-    # fig, ax = plt.subplots()
-    # fig.canvas.mpl_connect('button_press_event', on_mouse_event)
-    # fig.canvas.mpl_connect('motion_notify_event', on_mouse_event)
-    # fig.canvas.mpl_connect('button_release_event', on_mouse_event)
-    #
-    # plt.show()
+def preprocess(t, x, y, n_points=100):
+    # Interpolate timestamps
 
-    #############################
+    # Interpolate X and Y coordinates
+
+    # Normalize X and Y coordinates
+    x, y = normalize(x, y)
+
+    t = (t - np.min(t)) / 1000
+
+    # Calculate Velocity
+    velocity = calculate_velocity(x, y, t)
+
+    # Smooth Velocity
+    smoothed_velocity = extra_smooth(velocity, int(n_points/5))
+
+    x = extra_smooth(x, int(n_points/5))
+    y = extra_smooth(y, int(n_points/5))
+
+    return np.array(x), np.array(y), np.array(t), np.array(smoothed_velocity), np.array(velocity)
+
+
+def get_preprocessed_input():
+    x, y, t = get_input()
+    x, y, t, s_v, v = preprocess(t, x, y)
+    return x, y, t, s_v, v
+
+if __name__ == '__main__':
+    x, y, t, s_v, v = get_preprocessed_input()
+    plt.plot(x, y, marker="o")
+    plt.figure(2)
+    plt.plot(t, v, color="cyan")
+    plt.plot(t, s_v, color="red", marker="o")
+    plt.show()

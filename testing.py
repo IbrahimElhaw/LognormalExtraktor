@@ -7,6 +7,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
+import input
 import openfiles
 import utilities
 from draw_profile import draw_stroke_updated, draw_stroke_original
@@ -121,9 +122,11 @@ def left_before_right(x_values, param):
 
 
 
-if __name__ == '__main__': 
-    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\left_sq_bracket03.xml")  #v02
+if __name__ == '__main__':
+    # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\left_sq_bracket03.xml")  #v02
     # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_signature("DB\\Task1\\U1S1.TXT")
+    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = input.get_preprocessed_input()
+
     plt.plot(timestamps_arr, smoothed_velocity, label="velocity")
     plt.plot(timestamps_arr, velocity, label="veolcity before smoothing")
     plt.title("smoothed velocity")
@@ -178,7 +181,8 @@ if __name__ == '__main__':
         D2 = area_under_curve
         # TODO: choose between D1 and D2 and the mean
         # D = np.mean([D1, D2])
-        D = D2
+        # D = D2
+        D = D1
         # print((D, D2))
 
         theta_s, theta_e = angle
@@ -198,6 +202,7 @@ if __name__ == '__main__':
 
     acX, acY = openfiles.normalize(acX, acY)
     plt.plot(x_values, y_values, color="red", label="original")
+    plt.figure(3)
     plt.plot(acX, acY, color="black", label="regeneratd")
     plt.title("final result")
     plt.legend()
