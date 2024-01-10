@@ -7,6 +7,8 @@ import utilities
 # defines phi which is used in the drawing of the new strokes
 # ref https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
 # section 2, function (2)
+
+
 def phi(x, x_0, meu, sigma, theta_s, theta_e):
     term2 = (theta_e - theta_s) / 2
     term3 = 1 + np.math.erf((np.log(x - x_0) - meu) / (sigma * 2**0.5))
@@ -31,6 +33,7 @@ def draw_stroke_updated(D, theta_s, theta_e, time, x_0, meu, sigma, left_before_
             S_x.append(point_x)
             point_y = (D / (theta_e - theta_s)) * (-np.cos(phi(t, x_0, meu, sigma, theta_s, theta_e)) + np.cos(theta_s))
             S_y.append(-point_y) # negative?
+
     return numpy.array(S_x), numpy.array(S_y)
 
 def draw_stroke_original(D, theta_s, theta_e, time, x_0, meu, sigma):

@@ -6,6 +6,8 @@ import time
 
 from scipy.signal import savgol_filter
 
+frequency = 200
+
 
 def calculate_velocity(x, y, timestamps):
     velocity = [0]
@@ -74,10 +76,10 @@ def get_input():
 
         if len(x_values) > 1:
             points = list(zip(x_values, y_values))
-            pygame.draw.lines(screen, (0, 0, 255), False, points, 2)  # Draw lines on the screen
+            pygame.draw.lines(screen, (0, 0, 0), False, points, 2)  # Draw lines on the screen
 
         pygame.display.flip()  # Update the display
-        clock.tick(150)  # Set the desired capture frequency
+        clock.tick(frequency)  # Set the desired capture frequency
 
     x_values = np.array(x_values)
     y_values = np.array(y_values)
@@ -120,7 +122,7 @@ def extra_smooth(velocity, window_size, poly=2): # int((global_number/5))
     return smoothed_velocity1
 
 
-def preprocess(t, x, y, n_points=100):
+def preprocess(t, x, y):
     # Interpolate timestamps
 
     # Interpolate X and Y coordinates
@@ -128,16 +130,17 @@ def preprocess(t, x, y, n_points=100):
     # Normalize X and Y coordinates
     x, y = normalize(x, y)
 
-    t = (t - np.min(t)) / 1000
+    t = (t - np.min(t))  # / 1000
 
     # Calculate Velocity
     velocity = calculate_velocity(x, y, t)
 
     # Smooth Velocity
-    smoothed_velocity = extra_smooth(velocity, int(n_points/5))
+    smoothed_velocity = extra_smooth(velocity, int(frequency/10))  # int(n_points/5)
 
-    x = extra_smooth(x, int(n_points/5))
-    y = extra_smooth(y, int(n_points/5))
+    x = extra_smooth(x, int(frequency/10))  # int(n_points/5)
+    y = extra_smooth(y, int(frequency/10))  # int(n_points/5)
+
 
     return np.array(x), np.array(y), np.array(t), np.array(smoothed_velocity), np.array(velocity)
 
@@ -146,6 +149,8 @@ def get_preprocessed_input():
     x, y, t = get_input()
     x, y, t, s_v, v = preprocess(t, x, y)
     return x, y, t, s_v, v
+
+
 
 if __name__ == '__main__':
     x, y, t, s_v, v = get_preprocessed_input()

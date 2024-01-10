@@ -150,8 +150,10 @@ def represent_curve(x_values, y_values):
         trimmed_velocity = y_values.copy()
 
         used_local_max_index = local_maximum_indices[i]
-        used_local_min_index = local_minimum_indices[local_minimum_indices > used_local_max_index][0]
-
+        try:
+            used_local_min_index = local_minimum_indices[local_minimum_indices > used_local_max_index][0]
+        except IndexError:
+            used_local_min_index = -1
         # the values after used local min are trimmed to not calcculate the irrelevant values in the MSE (here one
         # stroke is researched).
         trimmed_velocity[x_values > x_values[used_local_min_index]] = -1
@@ -215,6 +217,8 @@ def represent_curve(x_values, y_values):
                 bestMSE = MSE
                 bestfit = (D, sigma, meu, t_0)
                         # print(count)
+        if bestfit is None:
+            bestfit=(0.1, 0.1, 0.1, 0.1)
         bestfit = correct_D(bestfit, x_values, trimmed_velocity)
         bestfit = correct_t0(bestfit, x_values, trimmed_velocity)
         # plt.plot(x_values, best_generate, color="red", label="best generated stroke")
