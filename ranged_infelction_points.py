@@ -142,10 +142,10 @@ def represent_curve(x_values, y_values):
     local_minimum_indices, local_maximum_indices = correct_local_extrems(local_minimum_indices,
                                                                                    local_maximum_indices,
                                                                                    x_values, y_values)
-    plt.scatter(x_values[local_maximum_indices], y_values[local_maximum_indices], color="purple", label="maxima")
-    plt.scatter(x_values[local_minimum_indices], y_values[local_minimum_indices], color="green", label="minima")
-    plt.plot(x_values, y_values, color="black", label="velocity")
-    plt.show()
+    # plt.scatter(x_values[local_maximum_indices], y_values[local_maximum_indices], color="purple", label="maxima")
+    # plt.scatter(x_values[local_minimum_indices], y_values[local_minimum_indices], color="green", label="minima")
+    # plt.plot(x_values, y_values, color="black", label="velocity")
+    # plt.show()
     for i in range(len(local_maximum_indices)):
         trimmed_velocity = y_values.copy()
 

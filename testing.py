@@ -9,8 +9,9 @@ import numpy as np
 
 import draw_movment
 import openfiles
+import redraw_profile
 import utilities
-from redraw_profile import draw_stroke_updated
+from redraw_profile import draw_stroke, draw_unknown_direction, calculate_change_angles
 from ranged_infelction_points import represent_curve, generate_curve_from_parameters
 
 
@@ -58,73 +59,56 @@ def correct_direction(angle_t2, angle_t3, angle_t4, dAngle):
 def estimate_theta_SE(x_values, y_values, D, sigma, meu, t0, characteristic_points, i=1):
     _, xinf1, x3, xinf2, _ = characteristic_points
 
-    d1 = calculate_distance_cp(D, sigma, 1)
-    d2 = calculate_distance_cp(D, sigma, 2)
-    d3 = calculate_distance_cp(D, sigma, 3)
-    d4 = calculate_distance_cp(D, sigma, 4)
-    d5 = calculate_distance_cp(D, sigma, 5)
+    d1, d2, d3, d4, d5 = [calculate_distance_cp(D, sigma, i) for i in range(1,6)]
 
-    current_curve = utilities.generate_lognormal_curve(D, sigma, meu, t0, timestamps_arr[0], timestamps_arr[-1],
-                                                       len(timestamps_arr))
-    plt.plot(timestamps_arr, current_curve, marker="s", zorder=0)
-    plt.scatter(timestamps_arr[characteristic_points], current_curve[characteristic_points], zorder=1, color="red")
-    plt.figure(2)
+
     plt.plot(x_values, y_values)
-    plt.scatter(x_values[characteristic_points][1], y_values[characteristic_points][1], color="green")
-    plt.scatter(x_values[characteristic_points][2], y_values[characteristic_points][2], color="yellow")
-    plt.scatter(x_values[characteristic_points][3], y_values[characteristic_points][3], color="red")
+    plt.scatter(x_values[characteristic_points][1:4], y_values[characteristic_points][1:4])
     plt.show()
 
-    angle_t2 = np.arctan(np.gradient(y_values, x_values)[xinf1])
-    angle_t3 = np.arctan(np.gradient(y_values, x_values)[x3])
-    angle_t4 = np.arctan(np.gradient(y_values, x_values)[xinf2])
+    dy = np.gradient(y_values)
+    dx = np.gradient(x_values)
+    anlges_list = np.arctan2(dy, dx)
+    angle_t2 = anlges_list[xinf1]
+    angle_t3 = anlges_list[x3]
+    angle_t4 = anlges_list[xinf2]
 
-
-    angle2_g = np.degrees(angle_t2)
-    angle3_g = np.degrees(angle_t3)
-    angle4_g = np.degrees(angle_t4)
-
-    # TODO: Iimportant: find a condition
     dAngle = angle_t4 - angle_t2
-    dAngle_g = np.degrees(dAngle)
+    dAngle = math.copysign(2 * math.pi - abs(dAngle), -dAngle) if abs(dAngle) > 3./2 * math.pi else dAngle
 
-    if abs(dAngle) > np.pi/2.2 :
-        if angle_t4<0:
-            angle_t4 = np.pi+angle_t4
-        else:
-            angle_t4 = -(np.pi-angle_t4)
-        angle4_g = np.degrees(angle_t4)
-        dAngle = angle_t4 - angle_t2
-        print("flipped")
-        dAngle = correct_direction(angle_t2, angle_t3, angle_t4, dAngle)
+    x4 = np.degrees(dAngle)
 
     dDistanz = d4 - d2
-    dAngle_g = np.degrees(dAngle)
 
-    # TODO this line should be tried
-    # dAngle = math.copysign(2 * math.pi - abs(dAngle), -dAngle) if abs(dAngle) > 3./2 * math.pi else dAngle
     dA_dD = dAngle / dDistanz
-    dA_dD_G = np.degrees(dA_dD)
 
     theta_s = angle_t3 - dA_dD * (d3 - d1)
     theta_e = angle_t3 + dA_dD * (d5 - d3)
+
+    theta_s_degree = np.degrees(theta_s)
+    theta_e_degree = np.degrees(theta_e)
     return theta_s, theta_e
 
 
 # param are the indexes of the 5 char points, the middle 3 are more reliable.
-def left_before_right(x_values_p, param):
-    point1 = x_values_p[param[1]]
-    point2 = x_values_p[param[2]]
-    point3 = x_values_p[param[3]]
+def left_before_right(x_values_p, param, i=-1):
+
+    point1 = x_values_p[param[1]]  # xinf1
+    point2 = x_values_p[param[2]]  # xm
+    point3 = x_values_p[param[3]]  # xinf2
 
     condition1 = point2 > point1
     condition2 = point3 > point2
     condition3 = point3 > point1
 
     n_con_satisfied = sum([condition1, condition2, condition3])
-    # TODO: important, find a better condition
-    print("sum of left before right =", n_con_satisfied, " and the result is ", n_con_satisfied >= 3)
-    return n_con_satisfied >= 2
+    if n_con_satisfied == 3:
+        print(True)
+        return True
+    if n_con_satisfied == 0:
+        print(False)
+        return False
+    return None
 
 
 def save_input(x_values, y_values, timestamps_arr, smoothed_velocity, velocity, filename="data.npz"):
@@ -138,10 +122,8 @@ def load_input(filename="data.npz"):
 
 
 if __name__ == '__main__':
-    # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_unistroke("DB\\1 unistrokes\\s01 (pilot)\\fast\\left_sq_bracket03.xml")  #v02
-    # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = openfiles.open_file_signature("DB\\Task1\\U1S1.TXT")
-    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = load_input("solved_bug, angle_t4 = np.pi+angle_t4.npz")
-    # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = draw_movment.get_preprocessed_input()
+    # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = load_input("solved_bug, angle_t4 = np.pi+angle_t4.npz")
+    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = draw_movment.get_preprocessed_input()
     # save_input(x_values, y_values, timestamps_arr, smoothed_velocity, velocity, filename="new_try.npz")
 
     plt.plot(timestamps_arr, smoothed_velocity, label="velocity")
@@ -162,6 +144,7 @@ if __name__ == '__main__':
     plt.plot(timestamps_arr, smoothed_velocity, label="smoothed", color="purple")
     plt.legend()
     plt.show()
+
 
     print(strokes)
     angles = []
@@ -194,14 +177,8 @@ if __name__ == '__main__':
         # print((D, D2))
 
         theta_s, theta_e = angle
-        # if i == 1:
-        #     theta_s+=np.pi/2
-        #     theta_e-=np.pi/2
-        #     print("neuer Winkel S: ", np.degrees(theta_s))
-        #     print("neuer Winkel E:", np.degrees(theta_e))
 
-        l_before_r = left_before_right(x_values, utilities.find_char_points_lognormal(timestamps_arr, sigma, meu, t0))
-        X, Y = draw_stroke_updated(D, theta_s, theta_e, timestamps_arr, t0, meu, sigma, l_before_r)
+        X, Y = redraw_profile.draw_stroke_original(D, theta_s, theta_e, timestamps_arr, t0, meu, sigma)
 
         condition = ~np.isnan(X) & ~np.isnan(Y)
         acX[condition] += X[condition]
