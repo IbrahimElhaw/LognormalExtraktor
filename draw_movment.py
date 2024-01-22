@@ -6,7 +6,7 @@ import time
 
 from scipy.signal import savgol_filter
 
-frequency = 200
+frequency = 150
 
 
 def calculate_velocity(x, y, timestamps):
@@ -123,9 +123,6 @@ def extra_smooth(velocity, window_size, poly=2): # int((global_number/5))
 
 
 def preprocess(t, x, y):
-    # Interpolate timestamps
-
-    # Interpolate X and Y coordinates
 
     # Normalize X and Y coordinates
     x, y = normalize(x, y)

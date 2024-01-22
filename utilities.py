@@ -9,7 +9,7 @@ def generate_lognormal_curve(D, std_dev, mean, x_0, start, end, number_of_points
     time = np.linspace(start, end, number_of_points, dtype="float64")
     curve = np.zeros_like(time, dtype="float64")
     if std_dev == 0:
-        return curve
+        std_dev+=0.01
     # Calculate the curve only for values greater than or equal to x_0
     condition = time > x_0
     curve[condition] = (D / ((time[condition] - x_0) * std_dev * np.sqrt(2 * np.pi))) * np.exp(
@@ -112,11 +112,11 @@ def find_char_points_lognormal(x_values, sigma, meu, x_0):
     v1 = x_0+np.exp(meu-3*sigma)
     p1 = find_nearest_index(x_values, v1)
     v2 = x_0+np.exp(meu-(1.5*sigma**2+sigma*np.sqrt(0.25*sigma**2+1)))
-    p2 = find_nearest_index(x_values, v2)
+    p2 = find_nearest_index(x_values, v2)+1
     v3 = x_0+np.exp(meu-sigma**2)
     p3 = find_nearest_index(x_values, v3)
     v4 = x_0+np.exp(meu-(1.5*sigma**2-sigma*np.sqrt(0.25*sigma**2+1)))
-    p4 = find_nearest_index(x_values, v4)
+    p4 = find_nearest_index(x_values, v4)-1
     v5 = x_0+np.exp(meu+3*sigma)
     p5 = find_nearest_index(x_values, v5)
     return np.array([p1, p2, p3, p4, p5])

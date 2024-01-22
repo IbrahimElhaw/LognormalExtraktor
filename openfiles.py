@@ -172,6 +172,14 @@ def interpolate(y_values, nfs=2, n_points=None, interp="linear"):
     f = interp1d(time, y_values, kind=interp)
     return f(time_inter)
 
+def load_input(filename="data.npz"):
+    data = np.load(filename)
+    return data['x_values'], data['y_values'], data['timestamps_arr'], data['smoothed_velocity'], data['velocity']
+
+def save_input(x_values, y_values, timestamps_arr, smoothed_velocity, velocity, filename="data.npz"):
+    np.savez(filename, x_values=x_values, y_values=y_values, timestamps_arr=timestamps_arr,
+             smoothed_velocity=smoothed_velocity, velocity=velocity)
+
 
 
 if __name__ == '__main__':

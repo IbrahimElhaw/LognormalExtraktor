@@ -12,8 +12,10 @@ from utilities import calculate_MSE as MSE
 
 
 def phi(x, x_0, meu, sigma, theta_s, theta_e):
+    modified_x = x - x_0
+    modified_x = np.maximum(modified_x, 0.0000001)
     term2 = (theta_e - theta_s) / 2
-    term3 = 1 + np.math.erf((np.log(x - x_0) - meu) / (sigma * 2**0.5))
+    term3 = 1 + np.math.erf((np.log(modified_x) - meu) / (sigma * 2**0.5))
     return_value = theta_s + term2 * term3
     return return_value
 
