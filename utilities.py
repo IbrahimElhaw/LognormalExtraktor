@@ -127,6 +127,33 @@ def find_nearest_index(arr, value):
     absolute_diff = np.abs(np.array(arr) - value)
     return np.argmin(absolute_diff)
 
+def normalize(x, y):
+    m_x = np.min(x)
+    m_y = np.min(y)
+    M_x = np.max(x, axis=0)
+    M_y = np.max(y, axis=0)
+    # normalized_X = (x - (M_x + m_x) / 2.0)  / np.max(M_x - m_x)
+    # normalized_Y = (y - (M_y + m_y)  / 2.0)  / np.max(M_y - m_y)
+    normalized_X = (x - m_x) / np.max(M_x - m_x)
+    normalized_Y = (y - m_y) / np.max(M_y - m_y)
+    return normalized_X, normalized_Y
+
+def load_input(filename="data.npz"):
+    data = np.load(filename)
+    return data['x_values'], data['y_values'], data['timestamps_arr'], data['smoothed_velocity'], data['velocity']
+
+def save_input(x_values, y_values, timestamps_arr, smoothed_velocity, velocity, filename="data.npz"):
+    np.savez(filename, x_values=x_values, y_values=y_values, timestamps_arr=timestamps_arr,
+             smoothed_velocity=smoothed_velocity, velocity=velocity)
+
+def interpolate(y_values, nfs=2, n_points=None, interp="linear"):
+    time = np.linspace(0, len(y_values) - 1, len(y_values), endpoint=True)
+    if n_points == None:
+        time_inter = np.linspace(0, len(y_values) - 1, 1 + nfs * len(y_values - 1), endpoint=True)
+    else:
+        time_inter = np.linspace(0, len(y_values) - 1, n_points, endpoint=True)
+    f = interp1d(time, y_values, kind=interp)
+    return f(time_inter)
 
 
 if __name__ == '__main__':

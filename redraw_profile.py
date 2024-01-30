@@ -26,6 +26,7 @@ def phi(x, x_0, meu, sigma, theta_s, theta_e):
 def draw_stroke(D, theta_s, theta_e, time, x_0, meu, sigma, left_before_right=False):
     S_x = []
     S_y = []
+    print(sigma)
     for t in time:
         if left_before_right:
             point_x = (D / (theta_e - theta_s)) * (np.sin(phi(t, x_0, meu, sigma, theta_s, theta_e)) - np.sin(theta_s))
@@ -43,10 +44,13 @@ def draw_stroke(D, theta_s, theta_e, time, x_0, meu, sigma, left_before_right=Fa
 def draw_stroke_original(D, theta_s, theta_e, time, x_0, meu, sigma):
     S_x = []
     S_y = []
+    denominator = theta_e - theta_s
+    if denominator==0:
+        denominator+=0.01
     for t in time:
-        point_x = (D / (theta_e - theta_s)) * (np.sin(phi(t, x_0, meu, sigma, theta_s, theta_e)) - np.sin(theta_s))
+        point_x = (D / denominator) * (np.sin(phi(t, x_0, meu, sigma, theta_s, theta_e)) - np.sin(theta_s))
         S_x.append(point_x)
-        point_y = (D / (theta_e - theta_s)) * (-np.cos(phi(t, x_0, meu, sigma, theta_s, theta_e)) + np.cos(theta_s))
+        point_y = (D / denominator) * (-np.cos(phi(t, x_0, meu, sigma, theta_s, theta_e)) + np.cos(theta_s))
         S_y.append(point_y)
     return numpy.array(S_x), numpy.array(S_y)
 

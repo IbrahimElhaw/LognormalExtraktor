@@ -6,7 +6,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
-from openfiles import load_input, interpolate
+from utilities import load_input, interpolate
 from utilities import generate_lognormal_curve, calculate_MSE, get_local_max, \
     get_local_min, correct_local_extrems, generate_4_lognormal_curves
 
@@ -162,8 +162,9 @@ def extract_parameters_first_mode(x_values, y_values):
         # the values after used local min are trimmed to not calcculate the irrelevant values in the MSE (here one
         # stroke is researched).
 
-        trimmed_velocity[x_values > x_values[used_local_min_index]] = -1
-
+        trimmed_velocity[x_values > x_values[used_local_min_index]] = 0
+        # plt.plot(x_values, trimmed_velocity)
+        # plt.show()
         v_3 = y_values[used_local_max_index]
         t_3 = x_values[used_local_max_index]
 
@@ -196,10 +197,11 @@ def extract_parameters_first_mode(x_values, y_values):
         best_generate = np.zeros_like(y_values)
         for param in params:
             D, sigma, meu, t_0,  = param
+            if sigma==0:
+                continue
             generated_profile = generate_lognormal_curve(D, sigma, meu, t_0, x_values[0], x_values[-1], len(x_values))
             MSE = calculate_MSE(generated_profile[generated_profile>0.01*np.max(generated_profile)], trimmed_velocity[generated_profile>0.01*np.max(generated_profile)])
             if MSE < bestMSE:
-
                 best_generate = generated_profile
                 bestMSE = MSE
                 bestfit = (D, sigma, meu, t_0)
@@ -337,7 +339,7 @@ def extract_parameters_second_mode(time, vel_difference):
 
 if __name__ == '__main__':
     # test_perfect_curve()
-    _, _, timestamps_arr, smoothed_velocity, velocity = load_input("new_try2.npz")
+    _, _, timestamps_arr, smoothed_velocity, velocity = load_input("exmaples/keep3.npz")
 
     plt.plot(timestamps_arr, smoothed_velocity, label="velocity")
     plt.plot(timestamps_arr, velocity, label="veolcity before smoothing")

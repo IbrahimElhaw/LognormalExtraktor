@@ -88,7 +88,8 @@ def get_input():
 
     # Close the pygame window after drawing is complete
     pygame.quit()
-
+    if len(x_values) < 5:
+        return get_input()
     return np.array(x_values), np.array(y_values), np.array(timestamps)
 
 
