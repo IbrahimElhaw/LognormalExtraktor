@@ -56,8 +56,9 @@ def correct_direction(angle_t2, angle_t3, angle_t4, dAngle):
 
 def estimate_theta_SE(x_values, y_values, D, sigma, characteristic_points, i=-1):
     _, xinf1, x3, xinf2, _ = characteristic_points
-
     d1, d2, d3, d4, d5 = [calculate_distance_cp(D, sigma, i) for i in range(1,6)]
+
+    # plt.scatter(x_values[characteristic_points], y_values[characteristic_points], label=f"char. points: {i}")
 
     dy = np.gradient(y_values)
     dx = np.gradient(x_values)
@@ -67,33 +68,35 @@ def estimate_theta_SE(x_values, y_values, D, sigma, characteristic_points, i=-1)
     angle_t4 = anlges_list[xinf2]
 
     dAngle = angle_t4 - angle_t2
+
+    # dieser Linie ist von dem Projekt SynSig2Vec inspiriert
     dAngle = math.copysign(2 * math.pi - abs(dAngle), -dAngle) if abs(dAngle) > 3./2 * math.pi else dAngle
 
-    dAngle2 = angle_t3 - angle_t2
-    dAngle2 = math.copysign(2 * math.pi - abs(dAngle2), -dAngle2) if abs(dAngle2) > 3./2 * math.pi else dAngle2
-
-    dAngle3 = angle_t4 - angle_t3
-    dAngle3 = math.copysign(2 * math.pi - abs(dAngle3), -dAngle3) if abs(dAngle3) > 3./2 * math.pi else dAngle3
+    # dAngle2 = angle_t3 - angle_t2
+    # dAngle2 = math.copysign(2 * math.pi - abs(dAngle2), -dAngle2) if abs(dAngle2) > 3./2 * math.pi else dAngle2
+    #
+    # dAngle3 = angle_t4 - angle_t3
+    # dAngle3 = math.copysign(2 * math.pi - abs(dAngle3), -dAngle3) if abs(dAngle3) > 3./2 * math.pi else dAngle3
 
     dDistanz =  d4 - d2
-    dDistanz2 = d3 - d2
-    dDistanz3 = d4 - d3
+    # dDistanz2 = d3 - d2
+    # dDistanz3 = d4 - d3
 
     dA_dD =  dAngle / dDistanz
-    dA_dD2 = dAngle2 /dDistanz2
-    dA_dD3 = dAngle3 /dDistanz3
+    # dA_dD2 = dAngle2 /dDistanz2
+    # dA_dD3 = dAngle3 /dDistanz3
 
-    abs1 = abs(dA_dD-dA_dD3)
-    abs2 = abs(dA_dD-dA_dD2)
-    abs3 = abs(dA_dD2-dA_dD3)
-    if np.min(([abs1, abs2, abs3])) == abs1:
-        firstdA_dD, seconddA_dD = dA_dD, dA_dD3
-    elif np.min(([abs1, abs2, abs3])) == abs2:
-        firstdA_dD, seconddA_dD = dA_dD, dA_dD2
-    else:
-        firstdA_dD, seconddA_dD = dA_dD2, dA_dD3
+    # abs1 = abs(dA_dD-dA_dD3)
+    # abs2 = abs(dA_dD-dA_dD2)
+    # abs3 = abs(dA_dD2-dA_dD3)
+    # if np.min(([abs1, abs2, abs3])) == abs1:
+    #     firstdA_dD, seconddA_dD = dA_dD, dA_dD3
+    # elif np.min(([abs1, abs2, abs3])) == abs2:
+    #     firstdA_dD, seconddA_dD = dA_dD, dA_dD2
+    # else:
+    #     firstdA_dD, seconddA_dD = dA_dD2, dA_dD3
 
-    dA_dD = np.mean([firstdA_dD, seconddA_dD])
+    # dA_dD = np.mean([firstdA_dD, seconddA_dD])
     theta_s = angle_t3 - dA_dD * (d3 - d1)
     theta_e = angle_t3 + dA_dD * (d5 - d3)
 
@@ -123,11 +126,14 @@ def left_before_right(x_values_p, param, i=-1):
 
 def estimate_angles(X_values, Y_values, strokes_list, time):
     angles=[]
+    # plt.plot(x_values, y_values, color="black", label="Bewegung")
     for i, stroke in enumerate(strokes_list):
         D, sigma, meu, t0 = stroke
         characteristic_points = utilities.find_char_points_lognormal(time, sigma, meu, t0)
         theta_s, theta_e = estimate_theta_SE(X_values, Y_values, D, sigma, characteristic_points, i)
         angles.append((theta_s, theta_e))
+    # plt.legend()
+    # plt.show()
     return angles
 
 
@@ -148,9 +154,9 @@ def redraw(smoothed_v, time, strokes_list, angles_list, regenerated_curve):
         area_under_curve = np.trapz(vy_selected, vx_selected)
         D2 = area_under_curve
         # TODO: choose between D1 and D2 and the mean
-        # D = np.mean([D1, D2])
+        D = np.mean([D1, D2])
         # D = D2
-        D = D1
+        # D = D1
         # print((D, D2))
 
         X, Y = redraw_profile.draw_stroke_original(D, theta_s, theta_e, time, t0, meu, sigma)
@@ -163,10 +169,9 @@ def redraw(smoothed_v, time, strokes_list, angles_list, regenerated_curve):
 
 
 if __name__ == '__main__':
-    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = utilities.load_input("exmaples/TaAb.npz")
-    # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = draw_movment.get_preprocessed_input()
+    # x_values, y_values, timestamps_arr, smoothed_velocity, velocity = utilities.load_input("last_run.npz")
+    x_values, y_values, timestamps_arr, smoothed_velocity, velocity = draw_movment.get_preprocessed_input()
     # utilities.save_input(x_values, y_values, timestamps_arr, smoothed_velocity, velocity, filename="last_run.npz")
-
     strokes1 = extract_parameters_first_mode(timestamps_arr, smoothed_velocity.copy())  # strokes in form (D, sigma, meu, t0)^n
     regenerated_log_curve = generate_curve_from_parameters(strokes1, timestamps_arr)
     plt.plot(timestamps_arr, regenerated_log_curve)

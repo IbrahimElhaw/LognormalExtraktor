@@ -3,11 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pygame
 import time
-
 from scipy.signal import savgol_filter
 
-frequency = 150
 
+frequency = 150
 
 def calculate_velocity(x, y, timestamps):
     velocity = [0]
@@ -26,8 +25,6 @@ def normalize(x, y):
     m_y = np.min(y)
     M_x = np.max(x, axis=0)
     M_y = np.max(y, axis=0)
-    # normalized_X = (x - (M_x + m_x) / 2.0)  / np.max(M_x - m_x)
-    # normalized_Y = (y - (M_y + m_y)  / 2.0)  / np.max(M_y - m_y)
     normalized_X = (x - m_x) / np.max(M_x - m_x)
     normalized_Y = (y - m_y) / np.max(M_y - m_y)
     return normalized_X, normalized_Y
@@ -49,6 +46,15 @@ def get_input():
     exit_flag = False  # Flag to control the outer loop
 
     while not exit_flag:
+
+        pygame.display.flip()  # Update the display
+        clock.tick(frequency)  # Set the desired capture frequency
+        screen.fill((255, 255, 255))  # Fill the screen with white background
+
+        if len(x_values) > 1:
+            points = list(zip(x_values, y_values))
+            pygame.draw.lines(screen, (0, 0, 0), False, points, 2)  # Draw lines on the screen
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -58,7 +64,6 @@ def get_input():
                 x_values.append(x)
                 y_values.append(y)
                 timestamps.append(time.time())  # Record the current timestamp
-                # Your processing logic here
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 recording = True
@@ -72,14 +77,6 @@ def get_input():
                 exit_flag = True
                 break
 
-        screen.fill((255, 255, 255))  # Fill the screen with white background
-
-        if len(x_values) > 1:
-            points = list(zip(x_values, y_values))
-            pygame.draw.lines(screen, (0, 0, 0), False, points, 2)  # Draw lines on the screen
-
-        pygame.display.flip()  # Update the display
-        clock.tick(frequency)  # Set the desired capture frequency
 
     x_values = np.array(x_values)
     y_values = np.array(y_values)
@@ -88,7 +85,7 @@ def get_input():
 
     # Close the pygame window after drawing is complete
     pygame.quit()
-    if len(x_values) < 5:
+    if len(x_values) < 10:
         return get_input()
     return np.array(x_values), np.array(y_values), np.array(timestamps)
 
@@ -112,13 +109,13 @@ def smooth_curve_2(velocity_data, window_size=20, poly_order=5):
     return smoothed_velocity
 
 
-# smoothes the a given curve through savgol_filter. the applies the filter twice.
+# smoothes the given curve through savgol_filter. the applies the filter twice.
 # emperical seen, it gets better reaults.
 def extra_smooth(velocity, window_size, poly=2): # int((global_number/5))
     smoothed_velocity1 = smooth_curve_2(velocity, window_size, poly)
     d_window = 10
-    while window_size -d_window > poly:
-        smoothed_velocity1 = smooth_curve_2(smoothed_velocity1, window_size -10 , poly)
+    while window_size - d_window > poly:
+        smoothed_velocity1 = smooth_curve_2(smoothed_velocity1, window_size - 10 , poly)
         d_window+=10
     return smoothed_velocity1
 
@@ -139,7 +136,6 @@ def preprocess(t, x, y):
     x = extra_smooth(x, int(frequency/10))  # int(n_points/5)
     y = extra_smooth(y, int(frequency/10))  # int(n_points/5)
 
-
     return np.array(x), np.array(y), np.array(t), np.array(smoothed_velocity), np.array(velocity)
 
 
@@ -154,6 +150,6 @@ if __name__ == '__main__':
     x, y, t, s_v, v = get_preprocessed_input()
     plt.plot(x, y, marker="o")
     plt.figure(2)
-    plt.plot(t, v, color="cyan")
-    plt.plot(t, s_v, color="red", marker="o")
+    plt.plot(t, v, color="red")
+    plt.plot(t, s_v, color="black")
     plt.show()

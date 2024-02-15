@@ -132,8 +132,6 @@ def normalize(x, y):
     m_y = np.min(y)
     M_x = np.max(x, axis=0)
     M_y = np.max(y, axis=0)
-    # normalized_X = (x - (M_x + m_x) / 2.0)  / np.max(M_x - m_x)
-    # normalized_Y = (y - (M_y + m_y)  / 2.0)  / np.max(M_y - m_y)
     normalized_X = (x - m_x) / np.max(M_x - m_x)
     normalized_Y = (y - m_y) / np.max(M_y - m_y)
     return normalized_X, normalized_Y

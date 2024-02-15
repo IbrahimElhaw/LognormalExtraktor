@@ -6,6 +6,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
+import draw_movment
 from utilities import load_input, interpolate
 from utilities import generate_lognormal_curve, calculate_MSE, get_local_max, \
     get_local_min, correct_local_extrems, generate_4_lognormal_curves
@@ -13,17 +14,17 @@ from utilities import generate_lognormal_curve, calculate_MSE, get_local_max, \
 # parameter ref: https://www.sciencedirect.com/science/article/pii/S0031320308004470?fr=RR-2&ref=pdf_download&rr=830343019bb9faee
 # table 2
 
-sigma_accuracy = 25  # how many points are used in the estimated range of characteristic points
+sigma_accuracy = 30  # how many points are used in the estimated range of characteristic points
 # the more accuracy the more calculations. O(n^2). 25 seems to be optimal value
 
 
 # the next 4 values are the proportion of the  start or end point of the range where the inflection points are likely
 # be. first range is for the first inflection point. the second is for the second
 # should be 0.43, 0.60, 0.60, 0.75 and sigma_accuracy=25, but I expanded the range to get more confident result
-first_range_start = 0.35
-first_range_end = 0.68
-second_range_start = 0.50
-second_range_end = 0.80
+first_range_start = 0.45
+first_range_end = 0.63
+second_range_start = 0.60
+second_range_end = 0.75
 
 
 def calculate_meu(t1, t2, a1, a2):
@@ -59,12 +60,14 @@ def corresponding_x_values(x_values, velocity_profile, v_3, x_3, sigma_accuracy)
     if np.any(condition):
         corresponding_x_value3 = x_values[condition][0]
     else:
+        print("in else getreten")
         points_after_x3 = x_values[x_values > x_3]
         corresponding_x_value3 = points_after_x3[int(len(points_after_x3)/2)]
     condition = (velocity_profile < (second_range_end * v_3)) & (x_values > x_3)
     if np.any(condition):
         corresponding_x_value4 = x_values[condition][0]
     else:
+        print("in else getreten")
         points_after_x4 = x_values[x_values > x_3]
         corresponding_x_value4 = points_after_x4[int(len(points_after_x4)*4 / 5)]
     x_values_v2_inf1 = np.linspace(corresponding_x_value1, corresponding_x_value2, sigma_accuracy)
@@ -149,6 +152,10 @@ def extract_parameters_first_mode(x_values, y_values):
     local_minimum_indices, local_maximum_indices = correct_local_extrems(local_minimum_indices,
                                                                                    local_maximum_indices,
                                                                                    x_values, y_values)
+    # plt.plot(x_values,y_values, label="Geschwindigkeit", color="black")
+    # plt.scatter(x_values[local_maximum_indices],y_values[local_maximum_indices], label="local maxima", color="red")
+    # plt.legend()
+    # plt.show()
 
     for i in range(len(local_maximum_indices)):
         trimmed_velocity = y_values.copy()
@@ -161,7 +168,9 @@ def extract_parameters_first_mode(x_values, y_values):
 
         # the values after used local min are trimmed to not calcculate the irrelevant values in the MSE (here one
         # stroke is researched).
-
+        # plt.plot(x_values, y_values, label="Geschwindigkeit", color="black")
+        # plt.scatter(x_values[local_maximum_indices], y_values[[local_maximum_indices]], label="locales Maximum", color= "purple")
+        #
         trimmed_velocity[x_values > x_values[used_local_min_index]] = 0
         # plt.plot(x_values, trimmed_velocity)
         # plt.show()
@@ -173,6 +182,13 @@ def extract_parameters_first_mode(x_values, y_values):
         v4_inf2_range = np.linspace(second_range_start * v_3, second_range_end * v_3, sigma_accuracy)
         x_values_v2_inf1, x_values_v4_inf2 = corresponding_x_values(x_values, y_values, v_3, t_3,
                                                                     sigma_accuracy)
+        # plt.plot(x_values, y_values, color="black", label="Geschwindigkeit")
+        # plt.scatter(x_values[used_local_max_index], y_values[used_local_max_index], color="purple", label="lokales Maximum")
+        # plt.plot(x_values_v2_inf1, v2_inf1_range, label="die Bereiche der Wendepunkts", color="red")
+        # plt.plot(x_values_v4_inf2, v4_inf2_range, color="red")
+        # plt.legend()
+        # plt.show()
+
 
         params = []
 
@@ -182,6 +198,7 @@ def extract_parameters_first_mode(x_values, y_values):
                 three_char_time = [x2_inf1, t_3, x4_inf2]
                 three_char_velocity = [v2_inf1, v_3, v4_inf2]
                 sigmas = calculate_sigmas(v2_inf1, v_3, v4_inf2)
+                # sigmas = calculate_sigmas(x2_inf1, t_3, x4_inf2)
                 for sigma in sigmas:
                     sig_sq = sigma ** 2
                     a = [(3 / 2) * sig_sq + sigma * np.sqrt(((sig_sq) / 4) + 1),
@@ -257,14 +274,14 @@ def extract_parameter_1stroke(xvalues, yvalues):
     v4_inf2_range = np.linspace(second_range_start * v_3, second_range_end * v_3, sigma_accuracy)
     x_values_v2_inf1, x_values_v4_inf2 = corresponding_x_values(xvalues, yvalues, v_3, t_3,
                                                                 sigma_accuracy)
-
     params = []
     bestgenerated = []
     for v2_inf1, x2_inf1 in zip(v2_inf1_range, x_values_v2_inf1):
         for v4_inf2, x4_inf2 in zip(v4_inf2_range, x_values_v4_inf2):
             three_char_time = [x2_inf1, t_3, x4_inf2]
             three_char_velocity = [v2_inf1, v_3, v4_inf2]
-            sigmas = calculate_sigmas(v2_inf1, v_3, v4_inf2)
+            sigmas = calculate_sigmas(x2_inf1, t_3, x4_inf2)
+            # sigmas = calculate_sigmas(v2_inf1, v_3, v4_inf2)
             for sigma in sigmas:
                 if sigma==0:
                     continue
@@ -287,10 +304,6 @@ def extract_parameter_1stroke(xvalues, yvalues):
         if MSE < bestMSE:
             bestMSE = MSE
             bestfit = (D, sigma, meu, t_0)
-
-    # bestfit = correct_D(bestfit, xvalues, yvalues)
-    # bestfit = correct_t0(bestfit, xvalues, yvalues)
-    # print("returning")
     return bestfit
 
 
@@ -313,7 +326,6 @@ def extract_parameters_second_mode(time, vel_difference):
     vel_difference = interpolate(vel_difference, n_points=500)
     time = interpolate(time, n_points=500)
     crossing_indices = np.where(np.diff(np.sign(vel_difference)))[0]
-    print("entering")
     strokes=[]
     try:
         i=1
@@ -339,8 +351,8 @@ def extract_parameters_second_mode(time, vel_difference):
 
 if __name__ == '__main__':
     # test_perfect_curve()
-    _, _, timestamps_arr, smoothed_velocity, velocity = load_input("exmaples/keep3.npz")
-
+    # _, _, timestamps_arr, smoothed_velocity, velocity = load_input("exmaples/keep3.npz")
+    _, _, timestamps_arr, smoothed_velocity, velocity = draw_movment.get_preprocessed_input()
     plt.plot(timestamps_arr, smoothed_velocity, label="velocity")
     plt.plot(timestamps_arr, velocity, label="veolcity before smoothing")
     plt.title("smoothed velocity")
@@ -351,11 +363,18 @@ if __name__ == '__main__':
 
     strokes1 = extract_parameters_first_mode(timestamps_arr, smoothed_velocity.copy())  # strokes in form (D, sigma, meu, t0)^n
     regenerated_curve = generate_curve_from_parameters(strokes1, timestamps_arr)
+    plt.plot(timestamps_arr, regenerated_curve, label="regenerated", color="black")
+    plt.plot(timestamps_arr, smoothed_velocity, label="original", color="red")
+    plt.legend()
+    plt.show()
     difference = smoothed_velocity - regenerated_curve
     strokes2 = extract_parameters_second_mode(timestamps_arr, difference)
-
-    for stroke in strokes2:
-        print(stroke)
+    regenerated_curve2 = regenerated_curve + generate_curve_from_parameters(strokes2, timestamps_arr)
+    plt.plot(timestamps_arr, smoothed_velocity, label="original", color="black")
+    plt.plot(timestamps_arr, regenerated_curve, label="regenerated after first mode", color="red")
+    plt.plot(timestamps_arr, regenerated_curve2, label="regenrated after second mode", color="green")
+    plt.legend()
+    plt.show()
 
 
 
